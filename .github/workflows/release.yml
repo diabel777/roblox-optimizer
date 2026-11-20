@@ -1,6 +1,8 @@
 # Automatyczne wydanie: wypchnij tag (np. v4.0.1) -> GitHub zbuduje exe, podpisze manifest,
 # utworzy Release i dopiero na końcu opublikuje version.json (ogłasza aktualizację użytkownikom).
-# Wymaga sekretu repozytorium POU_SIGNING_KEY (zawartość keys/release_private.key).
+# Wymaga sekretu repozytorium POU_SIGNING_KEY (zawartość keys/release_private.key)
+# ORAZ zmiennej repozytorium AUTO_RELEASE=true (Settings > Secrets and variables > Actions > Variables).
+# Bez niej workflow jest pomijany, więc ręczne wydania nie kończą się czerwonym błędem.
 name: release
 on:
   push:
@@ -9,6 +11,7 @@ permissions:
   contents: write
 jobs:
   build:
+    if: ${{ vars.AUTO_RELEASE == 'true' }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
