@@ -1,0 +1,56 @@
+[
+  {
+    "id": "balanced",
+    "name": "Zbalansowany",
+    "description": "Pełne tekstury + DirectX 11. Dobry wybór na co dzień.",
+    "applies_to": ["player", "studio"],
+    "flags": {
+      "FFlagDebugGraphicsPreferD3D11": true,
+      "DFFlagTextureQualityOverrideEnabled": true,
+      "DFIntTextureQualityOverride": 3
+    }
+  },
+  {
+    "id": "performance",
+    "name": "Maksymalna wydajność",
+    "description": "Dla słabszych komputerów: niska jakość tekstur i trawy, bez MSAA.",
+    "applies_to": ["player", "studio"],
+    "flags": {
+      "FFlagDebugGraphicsPreferD3D11": true,
+      "DFFlagTextureQualityOverrideEnabled": true,
+      "DFIntTextureQualityOverride": 0,
+      "DFIntDebugFRMQualityLevelOverride": 1,
+      "FIntDebugForceMSAASamples": 1,
+      "FIntFRMMaxGrassDistance": 0,
+      "FIntFRMMinGrassDistance": 0
+    }
+  },
+  {
+    "id": "quality",
+    "name": "Maksymalna jakość",
+    "description": "Najwyższa jakość grafiki i MSAA 4x. Wymaga mocnej karty graficznej.",
+    "applies_to": ["player", "studio"],
+    "flags": {
+      "FFlagDebugGraphicsPreferD3D11": true,
+      "DFFlagTextureQualityOverrideEnabled": true,
+      "DFIntTextureQualityOverride": 3,
+      "DFIntDebugFRMQualityLevelOverride": 21,
+      "FIntDebugForceMSAASamples": 4
+    }
+  },
+  {
+    "id": "studio_experimental",
+    "name": "Studio – eksperymentalny (wielowątkowość)",
+    "description": "Flagi spoza allowlisty Playera. Roblox może je ignorować - efekt zależy od wersji Studio.",
+    "applies_to": ["studio"],
+    "experimental": true,
+    "flags": {
+      "FFlagDebugGraphicsPreferD3D11": true,
+      "FFlagRenderParallelWork": true,
+      "DFIntRenderParallelWorkThreads": 8,
+      "FFlagTaskSchedulerEnableMultithreading": true,
+      "DFFlagTextureQualityOverrideEnabled": true,
+      "DFIntTextureQualityOverride": 3
+    }
+  }
+]

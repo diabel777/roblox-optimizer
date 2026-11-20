@@ -1,0 +1,28 @@
+{
+  "_info": "Skopiuj ten plik do %LOCALAPPDATA%\\ProUltimateOptimizer\\config\\theme.json i zmień co chcesz - nadpisze domyślny motyw po restarcie.",
+  "colors": {
+    "bg": "#0A0D14",
+    "sidebar": "#0E121B",
+    "card": "#131926",
+    "card_hover": "#182032",
+    "border": "#1E2738",
+    "text": "#E6EAF2",
+    "muted": "#8B96AB",
+    "accent": "#7C5CFF",
+    "accent_hover": "#9277FF",
+    "accent2": "#22D3EE",
+    "success": "#34D399",
+    "warning": "#FBBF24",
+    "danger": "#F43F5E",
+    "danger_hover": "#FB7185"
+  },
+  "fonts": {
+    "family": "Segoe UI",
+    "title": 24,
+    "heading": 15,
+    "body": 13,
+    "small": 11
+  },
+  "radius": {"card": 14, "button": 10},
+  "window": {"width": 1080, "height": 700, "min_width": 980, "min_height": 640}
+}

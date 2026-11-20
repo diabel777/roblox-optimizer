@@ -1,1 +1,89 @@
-# roblox-optimizer
+# PRO Ultimate Optimizer v4
+
+Optymalizator Roblox / Roblox Studio + czyszczenie Discorda, Opery, przeglądarek, launcherów i Windowsa.
+Instaluje się i **aktualizuje sam, jak Discord**: jeden `Setup.exe`, potem nowe wersje wchodzą w tle.
+
+## Jak to działa (po co ta przebudowa)
+
+W v3.3 instalator ściągał surowy exe, a aktualizacja nadpisywała działający plik przez `.bat` po 3 sekundach
+(zawodziło, gdy plik był jeszcze zablokowany), bez żadnej weryfikacji pobranego pliku. Teraz:
+
+```
+%LOCALAPPDATA%\ProUltimateOptimizer\
+  ProUltimateOptimizer.exe     launcher (skróty wskazują na niego; uruchamia najnowszą dobrą wersję)
+  app-4.0.0\ app-4.1.0\        kolejne wersje OBOK siebie - działająca nigdy nie jest nadpisywana
+  Backups\ config\ logs\ settings.json     Twoje dane - aktualizacje ich nie ruszają
+```
+
+* **Instalator** (`ProUltimateOptimizer-Setup.exe`) – ładny kreator z paskiem postępu, bez UAC, skróty (Pulpit/Menu Start),
+  wpis w *Ustawienia → Aplikacje* (z odinstalowaniem), naprawa przy ponownym uruchomieniu.
+* **Aktualizacje w tle** – aplikacja sprawdza co N godzin (ustawienie), pobiera nową wersję do `app-X.Y.Z`,
+  a ta uruchamia się przy następnym starcie (albo przyciskiem „Uruchom ponownie”).
+* **Wycofanie** – jeśli nowa wersja wywali się zaraz po starcie, launcher oznacza ją `.bad` i odpala poprzednią.
+* **Migracja z v3.3** – instalator sprząta stare pliki i zostawia Twoje kopie zapasowe (`Backups`).
+
+## Bezpieczeństwo
+
+| Zagrożenie | Zabezpieczenie |
+|---|---|
+| Podmieniona aktualizacja (włamanie na GitHuba, MITM) | manifest podpisany **Ed25519**; klucz publiczny jest w aplikacji, prywatny tylko u Ciebie |
+| Uszkodzona / podmieniona paczka | SHA-256 z podpisanego manifestu; niezgodność = odrzucenie, nic się nie instaluje |
+| Przekierowanie na obcy serwer | tylko HTTPS i lista hostów GitHuba – sprawdzana po każdym przekierowaniu |
+| Złośliwe zip (zip-slip, symlinki, zip-bomba) | `safe_extract` z limitami |
+| Cofnięcie do starej, dziurawej wersji | wersja z manifestu musi być **nowsza** niż obecna |
+| Nadmierne uprawnienia | aplikacja i instalator działają **bez admina**; UAC tylko na żądanie dla wybranych funkcji |
+| Przypadkowe skasowanie plików | czyszczenie ma ochronę ścieżek (nie rusza dysków, profilu, symlinków), pomija uruchomione aplikacje, pokazuje rozmiar przed usunięciem |
+| Zmiany systemowe bez powrotu | tweaki Windows zapamiętują poprzednie wartości i da się je cofnąć; przed zmianą powstaje kopia |
+
+Własny kod Ed25519 (`ed25519.py`) został porównany z biblioteką `cryptography` na losowych danych – zgodność 1:1.
+**Czego to NIE załatwia:** SmartScreen/antywirus. Niepodpisany exe może dostać ostrzeżenie „nieznany wydawca”
+(exe mają pełne metadane i bez UPX, co pomaga, ale pełne rozwiązanie to płatny certyfikat Code Signing).
+
+## Pierwsze wydanie – krok po kroku
+
+Wymagania: Windows, Python 3.11+ (z tkinter, domyślnie jest w instalatorze z python.org).
+
+1. `.\build.ps1 -Notes "Pierwsze wydanie v4"` – robi testy, **tworzy klucze** (jednorazowo), buduje 3 exe, paczkę i podpis → folder `release\`.
+   Skopiuj `keys\release_private.key` w bezpieczne miejsce (menedżer haseł). **Nigdy** nie wrzucaj go na GitHub (`keys/` jest w `.gitignore`).
+   Zgubisz klucz = zainstalowane aplikacje nie przyjmą kolejnych aktualizacji.
+2. Na GitHubie utwórz **Release** z tagiem `v4.0.0` i wgraj do niego: `ProUltimateOptimizer-4.0.0.zip` oraz `ProUltimateOptimizer-Setup.exe`.
+3. **Dopiero potem** wrzuć `release\version.json` do głównego katalogu repo (branch `main`, zastępuje stary). To on „ogłasza” aktualizację.
+   Kolejność ma znaczenie: dopóki `version.json` jest w starym formacie, instalator i aplikacja v4 (słusznie) go odrzucają.
+4. Dziel się linkiem do `Setup.exe` z Release’a.
+
+**Użytkownicy ze starym v3.3** zaktualizują się sami: stary mechanizm pobierze `Setup.exe` (pole `download_url` w manifeście)
+i uruchomi go – instalator zrobi resztę. To jedyny moment bez weryfikacji podpisu (tak działa v3.3); od v4 podpis jest zawsze sprawdzany.
+Mogą zostać nieszkodliwe śmieci po v3.3 (`RobloxStudioOptimizer.exe` w AppData), jeśli były zablokowane.
+
+### Kolejne wersje (3 kroki)
+1. Zmień `VERSION` w `src/pro_optimizer/version.py` (np. `4.0.1`).
+2. `.\build.ps1 -Notes "co nowego" -Tag v4.0.1`
+3. Release `v4.0.1` z `…-4.0.1.zip` (+ ewentualnie nowy Setup) → potem `version.json` do `main`.
+
+**Albo automatycznie:** dodaj sekret repo `POU_SIGNING_KEY` (zawartość klucza prywatnego) i wypchnij tag `git tag v4.0.1 && git push --tags`
+– workflow `.github/workflows/release.yml` zbuduje wszystko, utworzy Release i na końcu opublikuje `version.json`.
+
+## Personalizacja (bez przebudowy)
+
+Pliki JSON w `%LOCALAPPDATA%\ProUltimateOptimizer\config\` (przycisk **Ustawienia → Utwórz pliki do edycji**) nadpisują domyślne po restarcie:
+
+| Plik | Co zmieniasz |
+|---|---|
+| `theme.json` | kolory, czcionki, zaokrąglenia, rozmiar okna |
+| `apps.user.json` | własne aplikacje do czyszczenia (dodają się do 29 wbudowanych; `"disabled": true` ukrywa wbudowaną) |
+| `presets.user.json` | własne profile Roblox (flagi FFlag) |
+
+W kodzie: nowe strony w `src/pro_optimizer/ui/pages/` (dopisz w `app.py → page_defs`), logika w `cleaner.py`, `roblox.py`, `winsys.py`.
+
+## Uwaga o flagach Roblox
+Roblox wpuszcza tylko część flag (allowlista). Nieznane są ignorowane, a po aktualizacji Robloxa folder wersji się zmienia –
+dlatego aplikacja sama **przywraca Twój profil po aktualizacji Robloxa** (można wyłączyć). Profil „eksperymentalny” jest tak opisany celowo.
+
+## Struktura
+```
+src/pro_optimizer/   aplikacja + rdzeń (updater, security, install, shell, cleaner, roblox, winsys)
+installer/           Setup (kreator)         launcher/   launcher + rollback + odinstalowanie
+config/              domyślne katalogi/motyw  tools/      release.py (klucze, paczka, podpis), ikona, metadane
+specs/               PyInstaller              tests/      testy (33) + smoke-testy GUI (xvfb)
+```
+Testy: `python -m pytest tests/test_core.py tests/test_install.py`

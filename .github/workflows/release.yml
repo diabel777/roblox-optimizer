@@ -1,0 +1,52 @@
+# Automatyczne wydanie: wypchnij tag (np. v4.0.1) -> GitHub zbuduje exe, podpisze manifest,
+# utworzy Release i dopiero na końcu opublikuje version.json (ogłasza aktualizację użytkownikom).
+# Wymaga sekretu repozytorium POU_SIGNING_KEY (zawartość keys/release_private.key).
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Zależności
+        run: python -m pip install -r requirements-dev.txt
+      - name: Testy
+        run: python -m pytest -q tests/test_core.py tests/test_install.py
+      - name: Ikona i metadane
+        run: |
+          python tools/make_icon.py
+          python tools/make_version_info.py
+      - name: Budowanie
+        run: |
+          python -m PyInstaller --noconfirm --clean specs/app.spec
+          python -m PyInstaller --noconfirm --clean specs/launcher.spec
+          python -m PyInstaller --noconfirm --clean specs/setup.spec
+      - name: Paczka i podpis
+        env:
+          POU_SIGNING_KEY: ${{ secrets.POU_SIGNING_KEY }}
+        run: |
+          python tools/release.py package --dist dist/ProUltimateOptimizerApp --out release --tag ${{ github.ref_name }} --notes "Wydanie ${{ github.ref_name }}"
+          Copy-Item dist/ProUltimateOptimizer-Setup.exe release/
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/ProUltimateOptimizer-*.zip
+            release/ProUltimateOptimizer-Setup.exe
+      - name: Opublikuj version.json (ogłoszenie aktualizacji)
+        shell: bash
+        run: |
+          cp release/version.json /tmp/version.json
+          git config user.name "release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B main origin/main
+          cp /tmp/version.json version.json
+          git add version.json
+          git commit -m "Wydanie ${{ github.ref_name }}" || echo "brak zmian"
+          git push origin main
