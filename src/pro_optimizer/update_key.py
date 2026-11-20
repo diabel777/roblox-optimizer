@@ -6,4 +6,4 @@ na GitHub. Dopóki ten klucz jest pusty, aplikacja odmawia instalowania aktualiz
 (bezpieczne ustawienie domyślne).
 """
 
-PUBLIC_KEY_HEX = ""
+PUBLIC_KEY_HEX = "cf86c6a62840ecc5d802dd35e83e43813e519dc984f5fdee9d250ee23b02ab6d"
