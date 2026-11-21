@@ -1,0 +1,18 @@
+[
+  {"id": "roblox_player", "name": "Roblox Player", "kind": "roblox_player", "exes": ["RobloxPlayerBeta.exe"],
+   "desc": "Gra Roblox. Dodatkowo profile FastFlag i limit FPS."},
+  {"id": "roblox_studio", "name": "Roblox Studio", "kind": "roblox_studio", "exes": ["RobloxStudioBeta.exe"],
+   "desc": "Edytor Roblox. Dodatkowo profile FastFlag."},
+  {"id": "cs2", "name": "Counter-Strike 2", "exes": ["cs2.exe"], "hints": ["Counter-Strike Global Offensive"]},
+  {"id": "fortnite", "name": "Fortnite", "exes": ["FortniteClient-Win64-Shipping.exe"], "hints": ["Fortnite"]},
+  {"id": "valorant", "name": "Valorant", "exes": ["VALORANT-Win64-Shipping.exe"], "hints": ["VALORANT", "Riot Games"]},
+  {"id": "minecraft", "name": "Minecraft (Java)", "exes": ["javaw.exe"], "hints": ["Minecraft", ".minecraft"], "no_priority_ifeo": true},
+  {"id": "gta5", "name": "Grand Theft Auto V", "exes": ["GTA5.exe", "GTA5_Enhanced.exe"], "hints": ["Grand Theft Auto V"]},
+  {"id": "fivem", "name": "FiveM", "exes": ["FiveM.exe"], "hints": ["FiveM"]},
+  {"id": "cyberpunk", "name": "Cyberpunk 2077", "exes": ["Cyberpunk2077.exe"], "hints": ["Cyberpunk 2077"]},
+  {"id": "warzone", "name": "Call of Duty: Warzone", "exes": ["cod.exe", "ModernWarfare.exe"], "hints": ["Call of Duty"]},
+  {"id": "apex", "name": "Apex Legends", "exes": ["r5apex.exe", "r5apex_dx12.exe"], "hints": ["Apex"]},
+  {"id": "rust", "name": "Rust", "exes": ["RustClient.exe"], "hints": ["Rust"]},
+  {"id": "forza5", "name": "Forza Horizon 5", "exes": ["ForzaHorizon5.exe"], "hints": ["Forza Horizon 5"]},
+  {"id": "ets2", "name": "Euro Truck Simulator 2", "exes": ["eurotrucks2.exe"], "hints": ["Euro Truck Simulator 2"]}
+]

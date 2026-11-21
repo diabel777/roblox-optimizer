@@ -16,7 +16,7 @@ class RobloxPage(Page):
     title = "Roblox i Studio"
     subtitle = "Profile grafiki i FPS dla Roblox Player oraz Roblox Studio."
 
-    def __init__(self, master, app):
+    def __init__(self, master, app, embedded: bool = False):
         super().__init__(master, app)
         s = app.settings
         prof = s.get("roblox_profile")
@@ -27,7 +27,7 @@ class RobloxPage(Page):
         self.v_auto = tk.BooleanVar(value=bool(s.get("auto_reapply_roblox")))
         self.installs = roblox.find_installs()
 
-        body = w.scroll_frame(self)
+        body = ctk.CTkFrame(self, fg_color="transparent") if embedded else w.scroll_frame(self)
         body.pack(fill="both", expand=True)
         body.grid_columnconfigure(0, weight=1)
 
@@ -60,7 +60,7 @@ class RobloxPage(Page):
                                hover_color=c.accent_hover, border_color=c.muted).pack(side="left")
             if p.get("experimental"):
                 w.badge(top, "eksperymentalny", c.warning).pack(side="left", padx=10)
-            w.label(box, p.get("description", ""), "small", c.muted, wraplength=640).pack(fill="x", padx=44, pady=(2, 10))
+            w.label(box, p.get("description", ""), "small", c.muted, wraplength=520).pack(fill="x", padx=44, pady=(2, 10))
             self.preset_cards[p["id"]] = box
 
         # --- opcje
@@ -74,7 +74,7 @@ class RobloxPage(Page):
         self.fps.insert(0, str(prof.get("fps", 0)))
         self.fps.pack(side="left", padx=12)
         self.fps.bind("<KeyRelease>", lambda e: self._refresh())
-        w.label(row, "Roblox może ignorować tę flagę - zależy od wersji klienta.", "small", c.muted).pack(side="left")
+        w.label(oc, "Roblox może ignorować tę flagę - zależy od wersji klienta.", "small", c.muted).pack(fill="x", padx=22)
 
         trow = ctk.CTkFrame(oc, fg_color="transparent")
         trow.pack(fill="x", padx=22, pady=6)
@@ -85,7 +85,7 @@ class RobloxPage(Page):
                  command=self._refresh).pack(anchor="w", padx=22, pady=(10, 4))
         w.switch(oc, "Automatycznie przywracaj profil po aktualizacji Robloxa", variable=self.v_auto,
                  command=lambda: app.settings.set("auto_reapply_roblox", self.v_auto.get())).pack(anchor="w", padx=22, pady=(4, 6))
-        self.warn = w.label(oc, "", "small", c.warning, wraplength=700)
+        self.warn = w.label(oc, "", "small", c.warning, wraplength=540)
         self.warn.pack(fill="x", padx=22, pady=(4, 16))
 
         # --- podgląd
@@ -175,6 +175,8 @@ class RobloxPage(Page):
         def ok(res):
             done, missing, running = res
             self.app.settings.set("roblox_profile", {"preset": preset["id"], "fps": fps, "targets": targets, "merge": merge})
+            if done:
+                self.app.settings.set("roblox_applied", True)
             if done:
                 msg = f"Zapisano profil „{preset['name']}” ({', '.join(done)})."
                 if running:

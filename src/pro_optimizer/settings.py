@@ -12,14 +12,19 @@ from . import paths
 log = logging.getLogger(__name__)
 
 DEFAULTS: dict[str, Any] = {
-    "auto_update": True,
-    "update_check_hours": 6,
     "last_update_check": 0,
     "auto_reapply_roblox": True,
     "roblox_profile": {"preset": "balanced", "fps": 0, "targets": ["player", "studio"], "merge": True},
     "max_backups": 30,
     "confirm_destructive": True,
     "tweaks_backup": {},
+    "roblox_applied": False,
+    "games": {},            # id -> {"exe": ..., "opts": {...}, "auto_boost": bool}
+    "custom_games": [],     # [{"id","name","exe"}]
+    "auto": {},             # patrz automation.DEFAULTS
+    "auto_last": {},        # kiedy ostatnio wykonano zadanie automatyczne
+    "auto_tweaks": ["power", "gamemode", "gamedvr"],
+    "fan": {"mode": "auto", "curve": "balanced", "manual": 60},
 }
 
 _lock = threading.Lock()

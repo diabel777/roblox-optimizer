@@ -54,7 +54,7 @@ class DashboardPage(Page):
         w.divider(q).pack(fill="x", padx=22, pady=18)
         links = ctk.CTkFrame(q, fg_color="transparent")
         links.pack(fill="x", padx=22, pady=(0, 20))
-        for txt, pid in (("Ustaw profil Robloxa", "roblox"), ("Wybierz aplikacje do czyszczenia", "cleaner")):
+        for txt, pid in (("Optymalizacja gier", "games"), ("Wybierz aplikacje do czyszczenia", "cleaner")):
             w.button(links, txt, lambda p=pid: app.show_page(p), "ghost", height=34).pack(side="left", padx=(0, 8))
 
         # --- wykryte aplikacje

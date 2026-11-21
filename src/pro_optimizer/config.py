@@ -67,3 +67,8 @@ def load_apps() -> list[dict]:
 def load_presets() -> list[dict]:
     base = _read(paths.resource_dir() / "config" / "presets.json") or []
     return _merge_by_id(base, _read(paths.config_dir() / "presets.user.json"))
+
+
+def load_games() -> list[dict]:
+    base = _read(paths.resource_dir() / "config" / "games.json") or []
+    return _merge_by_id(base, _read(paths.config_dir() / "games.user.json"))

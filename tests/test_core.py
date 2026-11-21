@@ -229,10 +229,10 @@ class TestConfigLayering(Env):
         t = config.load_theme(); self.assertEqual(t["colors"]["accent"], "#ff0000"); self.assertIn("bg", t["colors"])
 
     def test_settings_roundtrip_and_corruption(self):
-        s = settings_mod.Settings(); s.set("auto_update", False)
-        self.assertFalse(settings_mod.Settings().get("auto_update"))
+        s = settings_mod.Settings(); s.set("max_backups", 7)
+        self.assertEqual(settings_mod.Settings().get("max_backups"), 7)
         paths.settings_file().write_text("{{{")
-        self.assertTrue(settings_mod.Settings().get("auto_update"))
+        self.assertEqual(settings_mod.Settings().get("max_backups"), 30)
 
 
 # ---------------------------------------------------------------- pełny cykl aktualizacji przez lokalny serwer

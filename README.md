@@ -87,3 +87,20 @@ config/              domyślne katalogi/motyw  tools/      release.py (klucze, p
 specs/               PyInstaller              tests/      testy (33) + smoke-testy GUI (xvfb)
 ```
 Testy: `python -m pytest tests/test_core.py tests/test_install.py`
+
+## Nowości w 4.1
+
+- **Optymalizacja gier** - lista gier (Roblox Player, Studio, CS2, Fortnite, Valorant, GTA V, FiveM…), każda z własnymi ustawieniami:
+  wysoka wydajność GPU, pełny ekran bez optymalizacji, stały priorytet CPU, doping po uruchomieniu. Własną grę dodasz przyciskiem „+ Dodaj .exe”.
+  Dla Robloxa dodatkowo profile FastFlag i limit FPS. Katalog gier: `config/games.json` (+ `games.user.json` w folderze konfiguracji).
+- **Analiza i naprawa** - skanuje komputer i gry (dysk, RAM, odświeżanie monitora, plan zasilania, temperatury, antywirus, sterowniki…)
+  i naprawia problemy jednym kliknięciem.
+- **Automatyzacja** - samo zwalnianie RAM (próg), czyszczenie DNS i cache, pilnowanie optymalizacji, aktualizacja definicji, doping gier.
+- **Wentylator i GPU** - inteligentna krzywa obrotów dla kart NVIDIA (NVML, wymaga admina), tryb ręczny, odczyty na żywo.
+- **Antywirus** - panel Microsoft Defendera: skanowanie, definicje, zagrożenia + audyt autostartu.
+- **Sterowniki i BIOS** - sterowniki z Windows Update, linki producentów GPU, aktualizacja programów (winget), informacje o BIOS i strona producenta płyty.
+- **Logi** - osobna strona z kolorowym podglądem na żywo.
+- Aktualizacje są zawsze automatyczne (sprawdzanie co 30 minut) - bez przełączników.
+
+Ograniczenia (celowe): BIOS nie jest wgrywany z Windowsa (ryzyko unieruchomienia płyty), antywirus to Defender (własny silnik AV byłby nierealny),
+wentylatorami steruje się tylko w kartach NVIDIA (wentylatory CPU/obudowy nie mają publicznego API).

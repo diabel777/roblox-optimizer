@@ -14,7 +14,7 @@ _FALLBACK = {
                "danger_hover": "#FB7185"},
     "fonts": {"family": "Segoe UI", "title": 24, "heading": 15, "body": 13, "small": 11},
     "radius": {"card": 14, "button": 10},
-    "window": {"width": 1080, "height": 700, "min_width": 980, "min_height": 640},
+    "window": {"width": 1140, "height": 780, "min_width": 980, "min_height": 680},
 }
 
 c = SimpleNamespace()      # kolory      -> theme.c.accent

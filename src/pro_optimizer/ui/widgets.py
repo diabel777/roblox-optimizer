@@ -230,3 +230,37 @@ class Toast(ctk.CTkFrame):
         if self._job:
             self.root.after_cancel(self._job)
         self._job = self.root.after(ms, self.place_forget)
+
+
+# --------------------------------------------------------------------------- dodatkowe widgety
+def option_menu(master, values: list[str], command: Optional[Callable] = None, width: int = 140, **kw):
+    return ctk.CTkOptionMenu(master, values=values, width=width, font=font("body"), command=command,
+                             fg_color=theme.blend(c.card, "#FFFFFF", 0.1), button_color=theme.blend(c.card, "#FFFFFF", 0.16),
+                             button_hover_color=theme.blend(c.card, "#FFFFFF", 0.26), text_color=c.text,
+                             dropdown_fg_color=c.card, dropdown_text_color=c.text, dropdown_hover_color=c.card_hover, **kw)
+
+
+def setting_row(master, title: str, desc: str = "", wrap: int = 560):
+    """Wiersz 'tytuł + opis' z miejscem po prawej na kontrolkę. Zwraca (ramka, prawa_strona)."""
+    row = ctk.CTkFrame(master, fg_color="transparent")
+    row.pack(fill="x", padx=22, pady=7)
+    left = ctk.CTkFrame(row, fg_color="transparent")
+    left.pack(side="left", fill="x", expand=True)
+    label(left, title, "body", c.text, "bold").pack(fill="x")
+    if desc:
+        label(left, desc, "small", c.muted, wraplength=wrap).pack(fill="x")
+    right = ctk.CTkFrame(row, fg_color="transparent")
+    right.pack(side="right", padx=(12, 0))
+    return row, right
+
+
+def open_path(path) -> None:
+    import os
+    import subprocess
+    try:
+        if os.name == "nt":
+            os.startfile(str(path))      # noqa: S606
+        else:
+            subprocess.Popen(["xdg-open", str(path)])
+    except Exception:
+        log.debug("open_path", exc_info=True)

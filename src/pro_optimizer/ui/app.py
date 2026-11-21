@@ -12,7 +12,7 @@ from typing import Callable, Optional
 
 import customtkinter as ctk
 
-from .. import config, paths, roblox, winsys
+from .. import automation, config, display, fan as fanmod, games as gamesmod, hw, paths, roblox, winsys
 from ..cleaner import running_processes
 from ..security import SecurityError
 from ..settings import Settings
@@ -22,6 +22,8 @@ from . import theme, widgets as w
 from .theme import c, font
 
 log = logging.getLogger(__name__)
+
+UPDATE_INTERVAL_MIN = 30   # stały, nieedytowalny odstęp sprawdzania aktualizacji
 
 
 class Page(ctk.CTkFrame):
@@ -50,6 +52,15 @@ class App(ctk.CTk):
         self.updater = Updater()
         self.catalog = config.load_apps()
         self.presets = config.load_presets()
+        self.games_catalog = config.load_games()
+        self.games: list[dict] = []
+        self.reload_games()
+        self.activity = automation.Activity()
+        self.fan = fanmod.FanController(on_event=lambda m: log.warning("Wentylator: %s", m))
+        self.gpu_sample = None
+        self._auto_busy = False
+        self._boosted: set[str] = set()
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # stan aktualizacji: idle | checking | downloading | ready | uptodate | error
         self.update_state = "idle"
@@ -92,13 +103,20 @@ class App(ctk.CTk):
 
     # ------------------------------------------------------------------ układ
     def _build_layout(self) -> None:
-        from .pages import backups_page, cleaner_page, dashboard, roblox_page, settings_page, system_page
+        from .pages import (antivirus_page, automation_page, backups_page, cleaner_page, dashboard, diagnostics_page,
+                            drivers_page, fan_page, games_page, logs_page, settings_page, system_page)
         self.page_defs = [
             ("dashboard", "Panel główny", dashboard.DashboardPage),
-            ("roblox", "Roblox i Studio", roblox_page.RobloxPage),
+            ("games", "Optymalizacja gier", games_page.GamesPage),
+            ("diagnostics", "Analiza i naprawa", diagnostics_page.DiagnosticsPage),
+            ("automation", "Automatyzacja", automation_page.AutomationPage),
             ("cleaner", "Czyszczenie aplikacji", cleaner_page.CleanerPage),
             ("system", "Windows i sieć", system_page.SystemPage),
+            ("fan", "Wentylator i GPU", fan_page.FanPage),
+            ("antivirus", "Antywirus", antivirus_page.AntivirusPage),
+            ("drivers", "Sterowniki i BIOS", drivers_page.DriversPage),
             ("backups", "Kopie zapasowe", backups_page.BackupsPage),
+            ("logs", "Logi", logs_page.LogsPage),
             ("settings", "Ustawienia i aktualizacje", settings_page.SettingsPage),
         ]
         self.grid_columnconfigure(1, weight=1)
@@ -111,7 +129,7 @@ class App(ctk.CTk):
         ctk.CTkFrame(self, width=1, corner_radius=0, fg_color=c.border).grid(row=0, column=0, sticky="nse")
 
         logo = ctk.CTkFrame(side, fg_color="transparent")
-        logo.pack(fill="x", padx=20, pady=(26, 22))
+        logo.pack(fill="x", padx=20, pady=(20, 14))
         ctk.CTkLabel(logo, text="⚡", width=42, height=42, corner_radius=12, fg_color=c.accent,
                      text_color="#FFFFFF", font=ctk.CTkFont(size=20)).pack(side="left")
         names = ctk.CTkFrame(logo, fg_color="transparent")
@@ -119,12 +137,12 @@ class App(ctk.CTk):
         w.label(names, "PRO Ultimate", "heading", c.text, "bold").pack(anchor="w")
         w.label(names, "Optimizer", "small", c.accent2, "bold").pack(anchor="w")
 
-        w.label(side, "MENU", "small", c.muted, "bold").pack(fill="x", padx=24, pady=(0, 6))
+        w.label(side, "MENU", "small", c.muted, "bold").pack(fill="x", padx=24, pady=(0, 4))
         for pid, title, _cls in self.page_defs:
-            b = ctk.CTkButton(side, text=title, anchor="w", height=42, corner_radius=10, font=font("body", "bold"),
+            b = ctk.CTkButton(side, text=title, anchor="w", height=34, corner_radius=9, font=font("body", "bold"),
                               fg_color="transparent", hover_color=theme.blend(c.sidebar, "#FFFFFF", 0.07),
                               text_color=c.muted, command=lambda p=pid: self.show_page(p))
-            b.pack(fill="x", padx=14, pady=2)
+            b.pack(fill="x", padx=14, pady=1)
             self._nav[pid] = b
 
         # --- stopka z aktualizacją
@@ -183,16 +201,143 @@ class App(ctk.CTk):
         self.bg.run(lambda: self.updater.cleanup_old(2))
         self.reapply_roblox(silent_if_none=True)
         self.after(5 * 60 * 1000, self._periodic_roblox)
-        if self.settings.get("auto_update"):
-            self.check_updates(manual=False)
-        self.after(30 * 60 * 1000, self._periodic_update)
+        self.check_updates(manual=False)                    # aktualizacje zawsze działają same
+        self.after(UPDATE_INTERVAL_MIN * 60 * 1000, self._periodic_update)
+        self._restore_fan()
+        self.after(3000, self._hw_tick)
+        self.after(20000, self._auto_tick)
 
     def _periodic_update(self) -> None:
-        hours = max(1, int(self.settings.get("update_check_hours", 6)))
-        if self.settings.get("auto_update") and self.update_state in ("idle", "uptodate", "error") \
-                and time.time() - self.settings.get("last_update_check", 0) > hours * 3600:
+        if self.update_state in ("idle", "uptodate", "error"):
             self.check_updates(manual=False)
-        self.after(30 * 60 * 1000, self._periodic_update)
+        self.after(UPDATE_INTERVAL_MIN * 60 * 1000, self._periodic_update)
+
+    # ------------------------------------------------------------------ gry
+    def reload_games(self) -> None:
+        saved = self.settings.get("games") or {}
+        out = []
+        for g in self.games_catalog:
+            g = dict(g)
+            if saved.get(g["id"], {}).get("exe") and not g.get("kind", "").startswith("roblox"):
+                g["exe"] = saved[g["id"]]["exe"]
+            out.append(g)
+        out += [dict(g) for g in (self.settings.get("custom_games") or [])]
+        self.games = out
+
+    # ------------------------------------------------------------------ czujniki i wentylator
+    def _restore_fan(self) -> None:
+        cfg = self.settings.get("fan") or {}
+        if cfg.get("mode", "auto") == "auto":
+            return
+        if not winsys.is_admin():
+            self.toast.show("Inteligentny wentylator wymaga administratora - wentylatory zostają w trybie automatycznym.", "warn", 6000)
+            return
+        self.bg.run(lambda: self.fan.configure(cfg.get("mode", "auto"), cfg.get("curve", "balanced"), int(cfg.get("manual", 60))))
+
+    def _hw_tick(self) -> None:
+        def work():
+            nv = hw.nvml()
+            s = nv.sample(0) if nv.available else None
+            if s is not None:
+                self.fan.tick(s.temp)
+            return s
+
+        def done(s):
+            self.gpu_sample = s
+
+        self.bg.run(work, done)
+        self.after(3000, self._hw_tick)
+
+    def on_close(self) -> None:
+        try:
+            self.fan.release()           # zawsze oddaj wentylatory karcie
+        except Exception:
+            log.exception("release fan")
+        self.destroy()
+
+    # ------------------------------------------------------------------ automatyzacja
+    def _auto_tick(self) -> None:
+        self.after(30_000, self._auto_tick)
+        if self._auto_busy:
+            return
+        cfg = automation.merged(self.settings.get("auto"))
+        mem = winsys.memory_status()
+        used = (mem[0] - mem[1]) / mem[0] * 100 if mem else None
+        last = dict(self.settings.get("auto_last") or {})
+
+        def work():
+            running = running_processes() if cfg["game_boost"]["enabled"] else set()
+            live = [g["id"] for g in gamesmod.running_game_exes(self.games, running)]
+            return running, live
+
+        def done(res):
+            running, live = res
+            self._boosted &= set(live)                       # gra zakończona - następny start dopingujemy znowu
+            due = automation.plan(cfg, time.time(), last, used, live, self._boosted)
+            if "game_boost" in due:
+                self._boosted |= set(live)
+            for name in due:
+                self.run_auto_task(name, running=running)
+
+        if cfg["game_boost"]["enabled"]:
+            self.bg.run(work, done)
+        else:
+            due = automation.plan(cfg, time.time(), last, used, [], set())
+            for name in due:
+                self.run_auto_task(name)
+
+    def run_auto_task(self, name: str, manual: bool = False, running: Optional[set] = None) -> None:
+        def work():
+            run = running if running is not None else running_processes()
+            return automation.run_task(name, self.settings, self.catalog, self.games, run)
+
+        def done(res):
+            ok, text = res
+            self.activity.add(name, ok, text)
+            last = dict(self.settings.get("auto_last") or {})
+            last[name] = time.time()
+            self.settings.set("auto_last", last)
+            if manual:
+                self.toast.show(f"{automation.TASK_LABELS.get(name, name)}: {text}", "ok" if ok else "warn")
+
+        self.bg.run(work, done, lambda e: self.activity.add(name, False, str(e)))
+
+    # ------------------------------------------------------------------ naprawy z analizy
+    def run_fix(self, fix: dict, after: Optional[Callable] = None) -> None:
+        t = fix.get("type")
+        if t == "page":
+            self.show_page(fix["id"])
+            return
+        if t == "game":
+            self.show_page("games")
+            pg = self.page("games")
+            if pg:
+                pg.select(fix["id"])
+            return
+
+        def work():
+            if t == "tweak":
+                tw = next(x for x in winsys.TWEAKS if x.id == fix["id"])
+                return winsys.apply_tweak(tw, self.settings)
+            if t == "ram":
+                r = winsys.trim_ram()
+                return r.get("ok", False), ("Zwolniono pamięć." if r.get("ok") else r.get("msg", "Błąd"))
+            if t == "dns":
+                return winsys.flush_dns()
+            if t == "refresh":
+                return display.set_refresh(int(fix["hz"]))
+            if t == "defender_update":
+                from .. import defender
+                return defender.update_signatures()
+            return False, "Nieznana naprawa."
+
+        def done(res):
+            ok, msg = res
+            self.toast.show(msg, "ok" if ok else "warn", 5000)
+            if after:
+                after()
+
+        self.bg.run(work, done, lambda e: self.toast.show(f"Błąd: {e}", "err"))
 
     def _periodic_roblox(self) -> None:
         self.reapply_roblox(silent_if_none=True)
@@ -252,10 +397,7 @@ class App(ctk.CTk):
                     self.toast.show(f"Masz najnowszą wersję (v{VERSION}).", "ok")
                 return
             self.update_info = info
-            if self.settings.get("auto_update") or manual:
-                self._download(info)
-            else:
-                self._set_update("ready", f"Dostępna wersja {info.version}")
+            self._download(info)
 
         def fail(e: Exception):
             msg = "Aktualizacje wyłączone: brak klucza podpisu." if "klucza" in str(e) else (

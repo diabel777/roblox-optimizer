@@ -38,8 +38,8 @@ def shot(name):
     subprocess.run(["import", "-window", "root", str(out / f"{name}.png")], check=True)
 
 pump(2.2)
-for pid in ("dashboard", "roblox", "cleaner", "system", "backups", "settings"):
-    app.show_page(pid); pump(1.2 if pid in ("cleaner", "dashboard") else 0.5); shot(pid)
+for pid in ("dashboard", "games", "diagnostics", "automation", "cleaner", "system", "fan", "antivirus", "drivers", "backups", "logs", "settings"):
+    app.show_page(pid); pump(1.6 if pid in ("cleaner", "dashboard", "games", "diagnostics") else 0.6); shot(pid)
 
 # test dialogu potwierdzenia: kliknij "Tak" po 0.5 s
 from pro_optimizer.ui import widgets as w
@@ -63,8 +63,16 @@ print("dialog result:", res)
 app.toast.show("Zapisano profil „Zbalansowany” (player, studio).", "ok", 60000); shot("toast")
 
 # kliknięcie "Zastosuj profil" - sprawdza zapis ClientAppSettings.json w folderze wersji
-app.show_page("roblox"); pump(0.5)
-app.page("roblox").apply(); pump(1.5)
+app.show_page("games"); pump(0.5)
+app.page("games").select("roblox_player"); pump(0.8); shot("games_roblox")
+from pro_optimizer.ui.pages.roblox_page import RobloxPage
+def find(wd, cls):
+    for ch in wd.winfo_children():
+        if isinstance(ch, cls): return ch
+        r = find(ch, cls)
+        if r: return r
+rb = find(app.page("games"), RobloxPage); assert rb is not None, "embedded RobloxPage not found"
+rb.apply(); pump(1.5)
 import json
 f = tmp / "Local/Roblox/Versions/version-6f3a9c12d4e8b705/ClientSettings/ClientAppSettings.json"
 print("applied:", f.exists(), json.loads(f.read_text()) if f.exists() else None)
