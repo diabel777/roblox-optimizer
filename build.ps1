@@ -40,8 +40,8 @@ Run $py @("-m", "PyInstaller", "--noconfirm", "--clean", "specs/launcher.spec")
 Run $py @("-m", "PyInstaller", "--noconfirm", "--clean", "specs/setup.spec")
 
 Write-Host "==> Paczka + podpis" -ForegroundColor Cyan
-$pkgArgs = @("tools/release.py", "package", "--dist", "dist/ProUltimateOptimizerApp", "--out", "release", "--notes", $Notes)
-if ($Tag) { $pkgArgs += @("--tag", $Tag) }
+$pkgArgs = @("tools/release.py", "package", "--dist", "dist/ProUltimateOptimizerApp", "--out", "release", "--notes=$Notes")
+if ($Tag) { $pkgArgs += @("--tag=$Tag") }
 Run $py $pkgArgs
 Copy-Item dist\ProUltimateOptimizer-Setup.exe release\ -Force
 Write-Host "`nGOTOWE -> .\release\" -ForegroundColor Green
