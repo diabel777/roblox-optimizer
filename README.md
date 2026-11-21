@@ -104,3 +104,9 @@ Testy: `python -m pytest tests/test_core.py tests/test_install.py`
 
 Ograniczenia (celowe): BIOS nie jest wgrywany z Windowsa (ryzyko unieruchomienia płyty), antywirus to Defender (własny silnik AV byłby nierealny),
 wentylatorami steruje się tylko w kartach NVIDIA (wentylatory CPU/obudowy nie mają publicznego API).
+
+## Budowanie wydania jednym kliknięciem
+
+Dwuklik na `ZBUDUJ.bat` (albo `ZBUDUJ.bat "opis zmian"` w cmd). Skrypt sam znajdzie Pythona, zbuduje wszystko i otworzy folder `release`.
+Klucz podpisu jest kopiowany do `%USERPROFILE%\POU-keys` - poza projektem, więc skasowanie folderu projektu go nie usuwa.
+Skrypt nigdy nie generuje nowego klucza sam (nowy klucz = zainstalowane aplikacje odrzucą aktualizacje).

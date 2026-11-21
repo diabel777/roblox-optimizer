@@ -13,6 +13,10 @@ Set-Location $PSScriptRoot
 
 function Run($exe, $argList) { & $exe @argList; if ($LASTEXITCODE -ne 0) { throw "Błąd: $exe $argList" } }
 
+if (-not $Tag) {
+    $m = Select-String -Path src\pro_optimizer\version.py -Pattern 'VERSION\s*=\s*"([^"]+)"'
+    if ($m) { $Tag = "v" + $m.Matches[0].Groups[1].Value }
+}
 if (-not (Test-Path .venv)) { Run python @("-m", "venv", ".venv") }
 $py = ".\.venv\Scripts\python.exe"
 Run $py @("-m", "pip", "install", "--quiet", "--upgrade", "pip")
@@ -24,7 +28,10 @@ Run $py @("-m", "pytest", "-q", "tests/test_core.py", "tests/test_install.py")
 Write-Host "==> Ikona, metadane, klucze" -ForegroundColor Cyan
 Run $py @("tools/make_icon.py")
 Run $py @("tools/make_version_info.py")
-if (-not (Test-Path keys\release_private.key) -and -not $env:POU_SIGNING_KEY) { Run $py @("tools/release.py", "keygen") }
+if (-not (Test-Path keys\release_private.key) -and -not $env:POU_SIGNING_KEY) {
+    if ($env:POU_ALLOW_KEYGEN -eq "1") { Run $py @("tools/release.py", "keygen") }
+    else { throw "Brak klucza podpisu (keys\release_private.key). Nie generuje nowego, bo zainstalowane aplikacje odrzucilyby aktualizacje. Uzyj ZBUDUJ.bat albo wstaw swoj folder keys." }
+}
 
 Write-Host "==> Budowanie (aplikacja, launcher, instalator)" -ForegroundColor Cyan
 Remove-Item -Recurse -Force dist, build -ErrorAction SilentlyContinue
