@@ -13,6 +13,11 @@ if not exist "%STORE%\release_private.key" (
     echo Zapisuje klucz podpisu w bezpiecznym miejscu: %STORE%
     mkdir "%STORE%" 2>nul
     copy /y "keys\release_private.key" "%STORE%\release_private.key" >nul
+    if not exist "%STORE%\release_private.key" (
+      echo.
+      echo NIE UDALO SIE zapisac klucza w %STORE% - zrob kopie folderu "keys" na pendrive!
+      pause
+    )
   )
 )
 if not exist "%STORE%\release_private.key" (
@@ -27,6 +32,7 @@ if not exist "%STORE%\release_private.key" (
 )
 mkdir keys 2>nul
 copy /y "%STORE%\release_private.key" "keys\release_private.key" >nul
+echo Klucz podpisu: OK ^(zapamietany w %STORE%^)
 
 rem --- 2. Python ---
 set "PYEXE="
