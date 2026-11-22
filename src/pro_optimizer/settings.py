@@ -24,6 +24,8 @@ DEFAULTS: dict[str, Any] = {
     "auto": {},             # patrz automation.DEFAULTS
     "auto_last": {},        # kiedy ostatnio wykonano zadanie automatyczne
     "auto_tweaks": ["power", "gamemode", "gamedvr"],
+    "pad": {},
+    "wheel": {},
     "fan": {"mode": "auto", "curve": "balanced", "manual": 60},
 }
 

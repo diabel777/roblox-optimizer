@@ -105,7 +105,7 @@ class App(ctk.CTk):
     # ------------------------------------------------------------------ układ
     def _build_layout(self) -> None:
         from .pages import (antivirus_page, automation_page, backups_page, cleaner_page, dashboard, diagnostics_page,
-                            drivers_page, fan_page, games_page, settings_page, system_page)
+                            controllers_page, drivers_page, fan_page, games_page, settings_page, system_page)
         self.page_defs = [
             ("dashboard", "Panel główny", dashboard.DashboardPage),
             ("games", "Optymalizacja gier", games_page.GamesPage),
@@ -114,6 +114,7 @@ class App(ctk.CTk):
             ("cleaner", "Czyszczenie aplikacji", cleaner_page.CleanerPage),
             ("system", "Windows i sieć", system_page.SystemPage),
             ("fan", "Wentylator i GPU", fan_page.FanPage),
+            ("controllers", "Pady i kierownice", controllers_page.ControllersPage),
             ("antivirus", "Antywirus", antivirus_page.AntivirusPage),
             ("drivers", "Sterowniki i BIOS", drivers_page.DriversPage),
             ("backups", "Kopie zapasowe", backups_page.BackupsPage),

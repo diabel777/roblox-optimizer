@@ -110,6 +110,9 @@ Dwuklik na `ZBUDUJ.bat` (albo `ZBUDUJ.bat "opis zmian"` w cmd). Skrypt sam znajd
 Klucz podpisu jest kopiowany do `%USERPROFILE%\POU-keys` - poza projektem, więc skasowanie folderu projektu go nie usuwa.
 Skrypt nigdy nie generuje nowego klucza sam (nowy klucz = zainstalowane aplikacje odrzucą aktualizacje).
 
+## Nowości w 4.3
+- **Pady i kierownice**: pad PS4/PS5 (kolor paska, jasność, test wibracji, spusty adaptacyjne DualSense, głośność głośnika/słuchawek/mikrofonu, dioda mikrofonu) przez oficjalny kanał HID oraz gotowe profile kierownicy (Logitech, Thrustmaster, Fanatec, Moza) do Forza Horizon 4/5.
+
 ## Nowości w 4.2
 
 - Kopie zapasowe: „Zabezpiecz wszystko" albo wybrane części (Roblox, optymalizacje Windows, gry, ustawienia programu), z przywracaniem wybranych części.
