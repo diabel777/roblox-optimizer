@@ -116,7 +116,7 @@ class SettingsPage(Page):
     def export_profile(self) -> None:
         path = fd.asksaveasfilename(parent=self, title="Zapisz profil", defaultextension=".pouprofile",
                                     initialfile="moj-profil.pouprofile",
-                                    filetypes=[("Profil PRO Ultimate Optimizer", "*.pouprofile"), ("JSON", "*.json")])
+                                    filetypes=[("Profil Aderis Boost", "*.pouprofile"), ("JSON", "*.json")])
         if not path:
             return
 
@@ -136,7 +136,7 @@ class SettingsPage(Page):
 
     def import_profile(self) -> None:
         path = fd.askopenfilename(parent=self, title="Wczytaj profil",
-                                  filetypes=[("Profil PRO Ultimate Optimizer", "*.pouprofile *.json")])
+                                  filetypes=[("Profil Aderis Boost", "*.pouprofile *.json")])
         if not path:
             return
         try:

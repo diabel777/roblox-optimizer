@@ -3,7 +3,7 @@ rem Buduje komplet wydania jednym klikiem. Uzycie: dwuklik na ZBUDUJ.bat
 rem (opcjonalnie: ZBUDUJ.bat "opis zmian")
 setlocal
 cd /d "%~dp0"
-title Budowanie PRO Ultimate Optimizer
+title Budowanie Aderis Boost
 
 set "STORE=%USERPROFILE%\POU-keys"
 

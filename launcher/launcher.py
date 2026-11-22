@@ -20,7 +20,7 @@ WATCH_SECONDS = 8
 
 def _msg(text):
     try:
-        ctypes.windll.user32.MessageBoxW(0, text, "PRO Ultimate Optimizer", 0x10)
+        ctypes.windll.user32.MessageBoxW(0, text, "Aderis Boost", 0x10)
     except Exception:
         print(text)
 
@@ -49,7 +49,7 @@ def uninstall(root: Path, quiet: bool) -> int:
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
     from pro_optimizer import install, shell               # leniwie: zwykły start launchera zostaje szybki
     if not quiet:
-        if shell.message_box("Czy na pewno odinstalować PRO Ultimate Optimizer?", "Odinstalowanie", 0x24) != 6:
+        if shell.message_box("Czy na pewno odinstalować Aderis Boost?", "Odinstalowanie", 0x24) != 6:
             return 0
         keep = shell.message_box("Zachować Twoje ustawienia, profile i kopie zapasowe?\n\n"
                                  "Tak = zostaną (np. do ponownej instalacji)\nNie = usuń wszystko", "Odinstalowanie", 0x24) == 6
@@ -61,7 +61,7 @@ def uninstall(root: Path, quiet: bool) -> int:
         _msg(f"Odinstalowanie nie powiodło się:\n{e}")
         return 1
     if not quiet:
-        shell.message_box("PRO Ultimate Optimizer został odinstalowany.", "Odinstalowanie", 0x40)
+        shell.message_box("Aderis Boost został odinstalowany.", "Odinstalowanie", 0x40)
     return 0
 
 

@@ -69,7 +69,7 @@ def parse(raw: bytes | str, known_tweaks: Iterable[str], presets: Iterable[str],
     except Exception:
         raise ProfileError("To nie jest poprawny plik profilu.") from None
     if not isinstance(d, dict) or d.get("format") != FORMAT:
-        raise ProfileError("To nie jest plik profilu PRO Ultimate Optimizer.")
+        raise ProfileError("To nie jest plik profilu Aderis Boost.")
     if d.get("version") != VERSION:
         raise ProfileError("Profil pochodzi z nowszej wersji programu - zaktualizuj aplikację.")
     known, presets, curves = set(known_tweaks), set(presets), set(curves)

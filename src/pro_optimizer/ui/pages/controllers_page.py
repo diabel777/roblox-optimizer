@@ -37,6 +37,7 @@ class ControllersPage(Page):
         self.pad_body.pack(fill="both", expand=True)
         self._build_pad(self.pad_body)
         self._build_wheel(self.wheel_body)
+        self.after(20000, self._poll_battery)
 
     def _tab(self, which: str) -> None:
         self.pad_body.pack_forget()
@@ -54,7 +55,9 @@ class ControllersPage(Page):
         w.label(top, "Podłączony pad", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 2))
         self.pad_msg = w.label(top, "Szukam padów…", "body", c.muted, wraplength=720)
         self.pad_msg.pack(fill="x", padx=22)
-        self.pad_menu = w.option_menu(top, ["-"], width=320)
+        self.batt = w.label(top, "", "heading", c.text, "bold")
+        self.batt.pack(fill="x", padx=22, pady=(4, 0))
+        self.pad_menu = w.option_menu(top, ["-"], width=320, command=lambda _v: self.update_battery())
         self.pad_menu.pack(anchor="w", padx=22, pady=(8, 4))
         r = ctk.CTkFrame(top, fg_color="transparent", height=1)
         r.pack(fill="x", padx=22, pady=(4, 16))
@@ -147,18 +150,6 @@ class ControllersPage(Page):
                 "prawy jak spust broni. Po zamknięciu gry wracają Twoje ustawienia. Tylko DualSense (PS5).", "small", c.muted,
                 wraplength=700).pack(fill="x", padx=60, pady=(0, 16))
 
-        gc = w.card(body)
-        gc.pack(fill="x", pady=(14, 0))
-        w.label(gc, "Pad jako normalny pad do gier", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 2))
-        w.label(gc, "Wiele gier na PC rozumie tylko pady Xbox, więc pad PlayStation ma „losowe” przyciski. Rozwiązanie: program, który "
-                "udaje dla gier pad Xbox. Zainstaluję oficjalny DS4Windows z winget (potrzebuje zgody administratora), po czym "
-                "uruchom go i podłącz pad. W Steam wystarczy włączyć Ustawienia → Kontroler → obsługa PlayStation.",
-                "small", c.muted, wraplength=700).pack(fill="x", padx=22)
-        gr = ctk.CTkFrame(gc, fg_color="transparent", height=1)
-        gr.pack(fill="x", padx=22, pady=(10, 16))
-        w.button(gr, "Zainstaluj DS4Windows", self.install_ds4w, "primary", height=36, width=210).pack(side="left")
-        w.button(gr, "Kalibracja pada w Windows", self.open_joy, "ghost", height=36, width=220).pack(side="left", padx=8)
-
         bar = ctk.CTkFrame(body, fg_color="transparent", height=1)
         bar.pack(fill="x", pady=(14, 20))
         w.button(bar, "Zastosuj do pada", self.apply_pad, "primary", height=40, width=190).pack(side="left")
@@ -190,11 +181,45 @@ class ControllersPage(Page):
             self.pad_msg.configure(text="Nie znaleziono pada PS4/PS5. Podłącz go kablem USB lub przez Bluetooth i kliknij „Odśwież listę”.")
             self.pad_menu.configure(values=["-"])
             self.pad_menu.set("-")
+            self.batt.configure(text="")
             return
         names = [f"{p.name} ({'Bluetooth' if p.bluetooth else 'USB'})" for p in self.pads]
         self.pad_menu.configure(values=names)
         self.pad_menu.set(names[0])
         self.pad_msg.configure(text=f"Znaleziono: {len(self.pads)}")
+        self.update_battery()
+
+    def update_battery(self) -> None:
+        pad = self._current_quiet()
+        if not pad:
+            self.batt.configure(text="")
+            return
+
+        def work():
+            return gp.battery(pad)
+
+        def done(b):
+            if not b:
+                self.batt.configure(text="Bateria: brak odczytu (podłącz kablem lub poczekaj chwilę)", text_color=c.muted)
+                return
+            state = {"charging": "ładowanie", "full": "naładowany", "discharging": "rozładowuje się"}[b["state"]]
+            col = c.danger if b["percent"] <= 15 and b["state"] == "discharging" else (c.success if b["state"] != "discharging" else c.text)
+            self.batt.configure(text=f"Bateria: {b['percent']}%  ({state})", text_color=col)
+        self.app.bg.run(work, done)
+
+    def _poll_battery(self) -> None:
+        if self.app.current_page_id() == "controllers" and self.pads and not self.app.settings.get("_pad_busy"):
+            self.update_battery()
+        self.after(20000, self._poll_battery)
+
+    def _current_quiet(self):
+        if not self.pads:
+            return None
+        try:
+            idx = list(self.pad_menu.cget("values")).index(self.pad_menu.get())
+        except ValueError:
+            idx = 0
+        return self.pads[min(idx, len(self.pads) - 1)]
 
     def _current(self):
         if not self.pads:
@@ -224,6 +249,8 @@ class ControllersPage(Page):
         if not pad:
             return
         cfg = self._collect()
+        if not cfg["rumble_left"] and not cfg["rumble_right"]:
+            cfg["rumble_left"] = cfg["rumble_right"] = 100          # test przy zerowych suwakach nic by nie pokazał
 
         def run():
             ok, msg = gp.pulse(pad, cfg)
@@ -314,20 +341,6 @@ class ControllersPage(Page):
             with open(path, "w", encoding="utf-8") as f:
                 f.write(wh.to_text(self._profile()))
             self.app.toast.show("Zapisano plik.", "ok")
-
-    def install_ds4w(self) -> None:
-        from ... import drivers
-        if not drivers.have_winget():
-            self.app.toast.show("Brak winget (Instalator aplikacji) - pobierz DS4Windows ze strony ds4-windows.com.", "warn", 6000)
-            return
-        if not w.confirm(self, "DS4Windows", "Zainstalować DS4Windows (oficjalny pakiet z winget)? Windows może zapytać o zgodę administratora.", "Zainstaluj"):
-            return
-        self.app.toast.show("Instaluję DS4Windows…", "info")
-
-        def run():
-            ok, msg = drivers.winget_install("Ryochan7.DS4Windows")
-            self.after(0, lambda: self.app.toast.show("Zainstalowano DS4Windows. Uruchom go z menu Start." if ok else msg, "ok" if ok else "err", 6000))
-        threading.Thread(target=run, daemon=True).start()
 
     def open_joy(self) -> None:
         import os

@@ -88,14 +88,6 @@ class RobloxPage(Page):
         self.warn = w.label(oc, "", "small", c.warning, wraplength=540)
         self.warn.pack(fill="x", padx=22, pady=(4, 16))
 
-        # --- podgląd
-        vc = w.card(body)
-        vc.grid(row=3, column=0, sticky="ew", pady=(14, 0))
-        w.label(vc, "Podgląd pliku ClientAppSettings.json", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 8))
-        self.preview = ctk.CTkTextbox(vc, height=150, corner_radius=10, fg_color=theme.blend(c.card, "#000000", 0.35),
-                                      text_color=c.accent2, font=ctk.CTkFont(family="Consolas", size=12), wrap="none")
-        self.preview.pack(fill="x", padx=22, pady=(0, 18))
-
         # --- przyciski
         br = ctk.CTkFrame(body, fg_color="transparent")
         br.grid(row=4, column=0, sticky="ew", pady=(14, 20))
@@ -132,12 +124,6 @@ class RobloxPage(Page):
         targets = self._targets() or ["player"]
         first = targets[0]
         inst = self.installs.get(first)
-        existing = roblox.read_flags(inst) if inst else {}
-        flags = roblox.build_flags(preset["flags"], self._fps(), existing, self.v_merge.get())
-        self.preview.configure(state="normal")
-        self.preview.delete("1.0", "end")
-        self.preview.insert("1.0", json.dumps(flags, indent=2))
-        self.preview.configure(state="disabled")
         warn = []
         mine = {**preset["flags"], **({roblox.FPS_FLAG: 1} if self._fps() else {})}
         if "player" in self._targets():

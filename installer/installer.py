@@ -1,4 +1,4 @@
-"""Setup - instalator PRO Ultimate Optimizer.
+"""Setup - instalator Aderis Boost.
 
 Dwuklik = instalacja (albo naprawa/aktualizacja, jeśli aplikacja już jest). Bez uprawnień administratora.
 Pobiera NAJNOWSZĄ wersję z internetu, sprawdza podpis cyfrowy i sumę SHA-256, instaluje w
@@ -144,7 +144,7 @@ def run_gui(opts: install.InstallOptions, on_ready=None) -> int:
         # ---------------- ekran 1: powitanie
         def welcome(self):
             self.clear()
-            self.header("PRO Ultimate Optimizer", "Naprawa / aktualizacja" if self.installed else "Instalator")
+            self.header("Aderis Boost", "Naprawa / aktualizacja" if self.installed else "Instalator")
             # pasek przycisków pakujemy PIERWSZY - inaczej zawartość wypycha go poza okno
             row = ctk.CTkFrame(self.body, fg_color="transparent")
             row.pack(side="bottom", fill="x")

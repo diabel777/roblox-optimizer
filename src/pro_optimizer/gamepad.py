@@ -101,7 +101,7 @@ def build_dualsense(cfg: dict, bluetooth: bool = False, seq: int = 0, mode: str 
     # valid_flag0: 0 wibracje, 2 spust prawy, 3 spust lewy, 4 słuchawki, 5 głośnik, 6 mikrofon, 7 sterowanie audio
     f0 = 0
     if mode == "rumble":
-        f0 |= 0b00000001
+        f0 |= 0b00000011          # wibracje + wybór haptyki (jak w sterowniku Linuksa)
     if mode != "keep" or cfg["trigger_right"] != "off":
         f0 |= 0b00000100
     if mode != "keep" or cfg["trigger_left"] != "off":
@@ -124,6 +124,8 @@ def build_dualsense(cfg: dict, bluetooth: bool = False, seq: int = 0, mode: str 
     c[10:21] = _trigger_bytes(cfg["trigger_right"], rs, rf)
     c[21:32] = _trigger_bytes(cfg["trigger_left"], ls, lf)
     c[38] = 0b00000010     # valid_flag2: ustawienie paska świetlnego
+    if mode == "rumble":
+        c[38] |= 0b00000100   # "compatible vibration 2" - wymagane przez nowszy firmware DualSense
     c[41] = 0x02
     c[42] = 0x00           # jasność diod gracza (0 = maks.)
     c[44:47] = bytes(_rgb(cfg))
@@ -176,6 +178,15 @@ def available() -> bool:
     return _hid() is not None
 
 
+def is_bluetooth(d: dict) -> bool:
+    """Rozpoznanie połączenia: nowsze hidapi podaje bus_type (1=USB, 2=Bluetooth); starsze - po ścieżce urządzenia Windows."""
+    bus = d.get("bus_type")
+    if bus in (1, 2):
+        return bus == 2
+    path = str(d.get("path", b"")).lower()
+    return "bthenum" in path or "00001124" in path or "bthledevice" in path
+
+
 def detect() -> list[Pad]:
     hid = _hid()
     if not hid:
@@ -190,7 +201,7 @@ def detect() -> list[Pad]:
             if d.get("usage_page") not in (1, 0) or d.get("usage") not in (5, 0):
                 continue
             seen.add(d["path"])
-            bt = (d.get("interface_number", 0) in (-1,)) or "bth" in str(d.get("path", b"")).lower()
+            bt = is_bluetooth(d)
             pads.append(Pad(d["path"], pid, bt, MODELS[pid], str(d.get("serial_number") or "")))
     except Exception:
         log.warning("Wyszukiwanie padów nie powiodło się", exc_info=True)
@@ -201,13 +212,13 @@ def apply(pad: Pad, cfg: dict, seq: int = 0, rumble: bool = False, mode: str = "
     hid = _hid()
     if not hid:
         return False, "Brak biblioteki HID - zainstaluj wersję aplikacji z obsługą padów."
+    mode = mode or ("rumble" if rumble else "apply")
     trig = cfg.get("_trig") if isinstance(cfg, dict) else None
     cfg = sanitize(cfg)
     if trig:
         cfg["_trig"] = trig
-    if not rumble:            # zwykłe zastosowanie nie ma wibrować - wibracje tylko w teście
+    if mode != "rumble" and not rumble:     # zwykłe zastosowanie nie ma wibrować - wibracje tylko w teście
         cfg = dict(cfg, rumble_left=0, rumble_right=0)
-    mode = mode or ("rumble" if rumble else "apply")
     report = (build_dualsense(cfg, pad.bluetooth, seq, mode) if pad.is_dualsense else build_dualshock4(cfg, pad.bluetooth, mode))
     try:
         dev = hid.device()
@@ -228,9 +239,11 @@ def pulse(pad: Pad, cfg: dict) -> tuple[bool, str]:
     ok, msg = apply(pad, cfg, rumble=True)
     if not ok:
         return ok, msg
-    time.sleep(0.6)
+    time.sleep(0.7)
     off = dict(sanitize(cfg), rumble_left=0, rumble_right=0)
-    return apply(pad, off)
+    # zatrzymanie MUSI iść w trybie "rumble" (z flagą wibracji), inaczej pad dostaje zera "do wiadomości" i dalej wibruje
+    ok2, _ = apply(pad, off, mode="rumble")
+    return ok2, "Test wibracji wykonany." if ok2 else "Nie udało się zatrzymać wibracji."
 
 
 # --------------------------------------------------------------------------- automatyczna siła spustów wg gry
@@ -293,3 +306,52 @@ class Keeper:
                     apply(pad, eff, seq, mode="keep")
             except Exception:
                 log.debug("Keeper: błąd odświeżania pada", exc_info=True)
+
+
+# --------------------------------------------------------------------------- bateria
+def parse_battery(report: bytes, pad: Pad) -> Optional[dict]:
+    """Czyta poziom baterii z raportu wejściowego. Zwraca {'percent': int, 'state': 'discharging'|'charging'|'full'} lub None."""
+    if not report:
+        return None
+    rid = report[0]
+    if pad.is_dualsense:
+        idx = {0x01: 53, 0x31: 54}.get(rid)
+        if idx is None or len(report) <= idx:
+            return None
+        v = report[idx]
+        level, st = v & 0x0F, (v >> 4) & 0x0F
+        if st == 2:
+            return {"percent": 100, "state": "full"}
+        if st in (0, 1):
+            return {"percent": min(100, level * 10 + 5), "state": "charging" if st == 1 else "discharging"}
+        return None
+    idx = {0x01: 30, 0x11: 32}.get(rid)
+    if idx is None or len(report) <= idx:
+        return None
+    v = report[idx]
+    level, cable = v & 0x0F, bool(v & 0x10)
+    if cable:
+        pct = min(100, level * 100 // 11)
+        return {"percent": 100 if level >= 11 else pct, "state": "full" if level >= 11 else "charging"}
+    return {"percent": min(100, level * 100 // 8), "state": "discharging"}
+
+
+def battery(pad: Pad) -> Optional[dict]:
+    """Odczyt baterii (po zapisie raportu pad przełącza się na pełne raporty - przez Bluetooth jest to konieczne)."""
+    hid = _hid()
+    if not hid:
+        return None
+    try:
+        dev = hid.device()
+        dev.open_path(pad.path)
+        try:
+            for _ in range(6):
+                data = bytes(dev.read(96, 250) or b"")
+                r = parse_battery(data, pad)
+                if r:
+                    return r
+        finally:
+            dev.close()
+    except Exception:
+        log.debug("Odczyt baterii nie powiódł się", exc_info=True)
+    return None

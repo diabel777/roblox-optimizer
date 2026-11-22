@@ -70,8 +70,23 @@ def create_shortcut(lnk: Path, target: Path, icon: Optional[Path] = None, descri
     return lnk.exists()
 
 
+LEGACY_SHORTCUT_NAMES = ("PRO Ultimate Optimizer.lnk",)     # skróty sprzed zmiany nazwy na Aderis Boost
+
+
+def _remove_legacy_shortcuts() -> None:
+    for key, csidl in (("desktop", _CSIDL_DESKTOP), ("start_menu", _CSIDL_PROGRAMS)):
+        base = _special_folder(csidl)
+        for name in LEGACY_SHORTCUT_NAMES:
+            if base:
+                try:
+                    (base / name).unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+
 def create_shortcuts(target: Path, icon: Optional[Path], desktop: bool, start_menu: bool) -> list[str]:
     """Zwraca listę utworzonych skrótów (do pokazania w podsumowaniu)."""
+    _remove_legacy_shortcuts()
     made = []
     for key, want in (("desktop", desktop), ("start_menu", start_menu)):
         p = shortcut_paths().get(key)
@@ -81,6 +96,7 @@ def create_shortcuts(target: Path, icon: Optional[Path], desktop: bool, start_me
 
 
 def remove_shortcuts() -> None:
+    _remove_legacy_shortcuts()
     for p in shortcut_paths().values():
         try:
             p.unlink(missing_ok=True)

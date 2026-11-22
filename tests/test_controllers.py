@@ -102,3 +102,29 @@ def test_selfheal_restores_launcher(tmp_path):
     (tmp_path / LAUNCHER_EXE).unlink()                         # np. antywirus usunął launcher
     assert selfheal.ensure(tmp_path)["launcher"] is True
     assert (tmp_path / LAUNCHER_EXE).read_bytes() == b"launcher-bytes"
+
+
+def test_rumble_report_has_all_flags_and_stop_report_too():
+    r = g.build_dualsense({"rumble_left": 100, "rumble_right": 50}, mode="rumble")
+    assert r[1] & 0b11 == 0b11 and r[1 + 38] & 0b100 and r[1 + 3] == 255 and r[1 + 2] == 128
+    stop = g.build_dualsense({"rumble_left": 0, "rumble_right": 0}, mode="rumble")
+    assert stop[1] & 1 and stop[1 + 3] == 0                      # flaga wibracji jest, silniki 0 => pad się zatrzymuje
+    assert g.build_dualsense({}, mode="apply")[1] & 1 == 0       # zwykłe zastosowanie nie rusza wibracji
+
+
+def test_battery_parsing():
+    ds = g.Pad(b"x", 0x0CE6, False)
+    usb = bytearray(64); usb[0] = 0x01; usb[53] = 0x17           # poziom 7, ładowanie
+    assert g.parse_battery(bytes(usb), ds) == {"percent": 75, "state": "charging"}
+    usb[53] = 0x20
+    assert g.parse_battery(bytes(usb), ds)["state"] == "full"
+    ds4 = g.Pad(b"x", 0x05C4, False)
+    r = bytearray(64); r[0] = 0x01; r[30] = 0x04                 # bateria, poziom 4 z 8
+    assert g.parse_battery(bytes(r), ds4) == {"percent": 50, "state": "discharging"}
+    assert g.parse_battery(b"\x01\x00", ds) is None and g.parse_battery(b"", ds) is None
+
+
+def test_bluetooth_detection():
+    assert g.is_bluetooth({"bus_type": 2}) and not g.is_bluetooth({"bus_type": 1})
+    assert g.is_bluetooth({"path": b"\\\\?\\HID#{00001124-0000-1000-8000-00805f9b34fb}_VID&0002054c"})
+    assert not g.is_bluetooth({"path": b"\\\\?\\HID#VID_054C&PID_0CE6#7&abc"})

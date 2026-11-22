@@ -1,4 +1,4 @@
-# PRO Ultimate Optimizer v4
+# Aderis Boost v4
 
 Optymalizator Roblox / Roblox Studio + czyszczenie Discorda, Opery, przeglądarek, launcherów i Windowsa.
 Instaluje się i **aktualizuje sam, jak Discord**: jeden `Setup.exe`, potem nowe wersje wchodzą w tle.
@@ -109,6 +109,9 @@ wentylatorami steruje się tylko w kartach NVIDIA (wentylatory CPU/obudowy nie m
 Dwuklik na `ZBUDUJ.bat` (albo `ZBUDUJ.bat "opis zmian"` w cmd). Skrypt sam znajdzie Pythona, zbuduje wszystko i otworzy folder `release`.
 Klucz podpisu jest kopiowany do `%USERPROFILE%\POU-keys` - poza projektem, więc skasowanie folderu projektu go nie usuwa.
 Skrypt nigdy nie generuje nowego klucza sam (nowy klucz = zainstalowane aplikacje odrzucą aktualizacje).
+
+## Nowości w 4.5
+- Nowa nazwa: Aderis Boost. Pady: poziom baterii i stan ładowania, poprawiony test wibracji (nowszy firmware DualSense), lepsze rozpoznanie Bluetooth. Usunięto instalację DS4Windows i podgląd pliku FastFlag.
 
 ## Nowości w 4.4
 - Samonaprawa: launcher (kopia zapasowa), skróty i wpis w Aplikacjach odtwarzają się same; aplikacja nie zostaje już w trybie administratora po restarcie.

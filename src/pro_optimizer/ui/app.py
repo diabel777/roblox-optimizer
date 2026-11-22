@@ -136,8 +136,8 @@ class App(ctk.CTk):
                      text_color="#FFFFFF", font=ctk.CTkFont(size=20)).pack(side="left")
         names = ctk.CTkFrame(logo, fg_color="transparent")
         names.pack(side="left", padx=12)
-        w.label(names, "PRO Ultimate", "heading", c.text, "bold").pack(anchor="w")
-        w.label(names, "Optimizer", "small", c.accent2, "bold").pack(anchor="w")
+        w.label(names, "Aderis", "heading", c.text, "bold").pack(anchor="w")
+        w.label(names, "Boost", "small", c.accent2, "bold").pack(anchor="w")
 
         w.label(side, "MENU", "small", c.muted, "bold").pack(fill="x", padx=24, pady=(0, 4))
         navwrap = ctk.CTkFrame(side, fg_color="transparent")
