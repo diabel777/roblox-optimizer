@@ -1,9 +1,12 @@
 """Ustawienia, aktualizacje, pliki do customizacji, informacje o bezpieczeństwie."""
 from __future__ import annotations
 
+import json
+import tkinter.filedialog as fd
+
 import customtkinter as ctk
 
-from ... import paths
+from ... import automation, fan as fanmod, paths, profiles, winsys
 from ...security import DEFAULT_HOSTS
 from ...update_key import PUBLIC_KEY_HEX
 from ...version import APP_NAME, VERSION
@@ -42,9 +45,23 @@ class SettingsPage(Page):
         w.label(uc, f"Aktualizacje pobierają się same w tle - aplikacja sprawdza nowe wersje co {UPDATE_INTERVAL_MIN} minut. "
                     "Nowa wersja instaluje się po ponownym uruchomieniu.", "small", c.muted, wraplength=700).pack(fill="x", padx=22, pady=(6, 18))
 
+        # --- udostępnianie profilu
+        pc = w.card(body)
+        pc.grid(row=1, column=0, sticky="ew", pady=(14, 0))
+        w.label(pc, "Udostępnianie profilu", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 4))
+        w.label(pc, "Zapisz swoje ustawienia (włączone optymalizacje, profil Robloxa, krzywą wentylatora, automatyzację) "
+                    "do małego pliku i wyślij go znajomym - albo wczytaj profil od kogoś, komu ufasz. "
+                    "Nic nie jest wysyłane przez internet: plik przekazujesz sam. Przed wczytaniem zobaczysz listę zmian "
+                    "i musisz ją zatwierdzić. Plik zawiera tylko ustawienia - bez nazwy komputera, kont i ścieżek.",
+                "small", c.muted, wraplength=700).pack(fill="x", padx=22, pady=(0, 8))
+        prow = ctk.CTkFrame(pc, fg_color="transparent")
+        prow.pack(fill="x", padx=22, pady=(4, 18))
+        w.button(prow, "Zapisz mój profil do pliku", self.export_profile, "primary", width=220).pack(side="left")
+        w.button(prow, "Wczytaj profil z pliku", self.import_profile, "ghost", width=190).pack(side="left", padx=8)
+
         # --- bezpieczeństwo
         sc = w.card(body)
-        sc.grid(row=1, column=0, sticky="ew", pady=(14, 20))
+        sc.grid(row=2, column=0, sticky="ew", pady=(14, 20))
         w.label(sc, "Bezpieczeństwo", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 8))
         key_ok = bool(PUBLIC_KEY_HEX)
         facts = [
@@ -87,3 +104,65 @@ class SettingsPage(Page):
             self.btn_restart.pack(side="left", padx=8)
         else:
             self.btn_restart.pack_forget()
+
+    # ------------------------------------------------------------------ profile
+    def export_profile(self) -> None:
+        path = fd.asksaveasfilename(parent=self, title="Zapisz profil", defaultextension=".pouprofile",
+                                    initialfile="moj-profil.pouprofile",
+                                    filetypes=[("Profil PRO Ultimate Optimizer", "*.pouprofile"), ("JSON", "*.json")])
+        if not path:
+            return
+
+        def work():
+            states = {t.id: winsys.tweak_state(t) for t in winsys.TWEAKS}
+            return profiles.export_profile(self.app.settings.get, states, "Mój profil", VERSION)
+
+        def done(prof):
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(prof, f, indent=2, ensure_ascii=False)
+                self.app.toast.show("Profil zapisany. Możesz go wysłać znajomym.", "ok")
+            except OSError as e:
+                self.app.toast.show(f"Nie udało się zapisać pliku: {e}", "err", 6000)
+
+        self.app.bg.run(work, done, lambda e: self.app.toast.show(f"Błąd: {e}", "err"))
+
+    def import_profile(self) -> None:
+        path = fd.askopenfilename(parent=self, title="Wczytaj profil",
+                                  filetypes=[("Profil PRO Ultimate Optimizer", "*.pouprofile *.json")])
+        if not path:
+            return
+        try:
+            with open(path, "rb") as f:
+                raw = f.read(profiles.MAX_BYTES + 1)
+            prof = profiles.parse(raw, [t.id for t in winsys.TWEAKS], [p["id"] for p in self.app.presets],
+                                  fanmod.CURVES.keys())
+        except (OSError, profiles.ProfileError) as e:
+            self.app.toast.show(str(e), "err", 6000)
+            return
+        lines = profiles.describe(prof, {t.id: t.name for t in winsys.TWEAKS},
+                                  {p["id"]: p.get("name", p["id"]) for p in self.app.presets},
+                                  {k: v["name"] for k, v in fanmod.CURVES.items()}, automation.TASK_LABELS)
+        if not w.confirm(self, f"Wczytać profil „{prof['name']}”?",
+                         "\n".join("• " + ln for ln in lines) + "\n\nKażdą z optymalizacji możesz potem cofnąć jednym przełącznikiem.",
+                         "Zastosuj"):
+            return
+
+        def work():
+            msgs = []
+            for tid in prof["tweaks"]:
+                t = next(x for x in winsys.TWEAKS if x.id == tid)
+                ok, msg = winsys.apply_tweak(t, self.app.settings)
+                msgs.append(f"{t.name}: {'OK' if ok else msg}")
+            profiles.apply_settings(prof, self.app.settings)
+            return msgs
+
+        def done(msgs):
+            bad = [m for m in msgs if not m.endswith("OK")]
+            self.app.toast.show("Profil zastosowany." + (f" Pominięto: {len(bad)} (brak uprawnień lub niedostępne)." if bad else ""),
+                                "warn" if bad else "ok", 6000)
+            pg = self.app.page("system")
+            if pg:
+                pg.on_show()
+
+        self.app.bg.run(work, done, lambda e: self.app.toast.show(f"Błąd: {e}", "err"))

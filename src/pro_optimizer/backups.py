@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from . import paths
+from .ps import system_exe
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ def restore(item: BackupItem, target: Optional[Path]) -> str:
     if item.kind == "registry":
         if os.name != "nt":
             raise RuntimeError("Import rejestru działa tylko w Windows")
-        r = subprocess.run(["reg", "import", str(item.path)], capture_output=True, text=True,
+        r = subprocess.run([system_exe("reg"), "import", str(item.path)], capture_output=True, text=True,
                            creationflags=0x08000000)
         if r.returncode != 0:
             raise RuntimeError((r.stderr or r.stdout or "reg import nie powiódł się").strip())

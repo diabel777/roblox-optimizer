@@ -99,7 +99,6 @@ Testy: `python -m pytest tests/test_core.py tests/test_install.py`
 - **Wentylator i GPU** - inteligentna krzywa obrotów dla kart NVIDIA (NVML, wymaga admina), tryb ręczny, odczyty na żywo.
 - **Antywirus** - panel Microsoft Defendera: skanowanie, definicje, zagrożenia + audyt autostartu.
 - **Sterowniki i BIOS** - sterowniki z Windows Update, linki producentów GPU, aktualizacja programów (winget), informacje o BIOS i strona producenta płyty.
-- **Logi** - osobna strona z kolorowym podglądem na żywo.
 - Aktualizacje są zawsze automatyczne (sprawdzanie co 30 minut) - bez przełączników.
 
 Ograniczenia (celowe): BIOS nie jest wgrywany z Windowsa (ryzyko unieruchomienia płyty), antywirus to Defender (własny silnik AV byłby nierealny),
@@ -110,3 +109,14 @@ wentylatorami steruje się tylko w kartach NVIDIA (wentylatory CPU/obudowy nie m
 Dwuklik na `ZBUDUJ.bat` (albo `ZBUDUJ.bat "opis zmian"` w cmd). Skrypt sam znajdzie Pythona, zbuduje wszystko i otworzy folder `release`.
 Klucz podpisu jest kopiowany do `%USERPROFILE%\POU-keys` - poza projektem, więc skasowanie folderu projektu go nie usuwa.
 Skrypt nigdy nie generuje nowego klucza sam (nowy klucz = zainstalowane aplikacje odrzucą aktualizacje).
+
+## Nowości w 4.2
+
+- Kopie zapasowe: „Zabezpiecz wszystko" albo wybrane części (Roblox, optymalizacje Windows, gry, ustawienia programu), z przywracaniem wybranych części.
+- 6 nowych optymalizacji FPS (każda z cofaniem): pełny ekran bez optymalizacji, brak ograniczania mocy CPU, priorytet pierwszego planu,
+  mysz bez przyspieszania, blokada aplikacji w tle, brak animacji okien.
+- Udostępnianie profilu: zapis/odczyt ustawień do pliku `.pouprofile`. Nic nie idzie przez sieć; import jest walidowany
+  (lista dozwolonych pól, twarde zakresy liczb, limit rozmiaru) i wymaga zatwierdzenia listy zmian.
+- Zabezpieczenia czyszczenia: wpisy własne użytkownika mają ostrzejsze reguły, zablokowane foldery z danymi logowania/certyfikatami,
+  kontrola linków/junctionów całego łańcucha folderów tuż przed kasowaniem. Pliki konfiguracji są ograniczone rozmiarem i walidowane.
+- Usunięto przycisk „Dodaj .exe" i stronę Logi (błędy nadal zapisują się do pliku w folderze `logs`).

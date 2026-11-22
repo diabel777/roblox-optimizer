@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from ... import cleaner, roblox, winsys
+from ... import analyzer, automation, cleaner, roblox, winsys
 from ...cleaner import fmt_bytes
-from .. import theme, widgets as w
+from .. import anim, theme, widgets as w
 from ..app import Page
 from ..theme import c
 
@@ -19,8 +19,27 @@ class DashboardPage(Page):
         self.cpu = winsys.CpuMeter()
         self.grid_columnconfigure(0, weight=1)
 
+        # --- hero: wynik kondycji + Zwiększ FPS
+        hero = w.card(self)
+        hero.grid(row=0, column=0, sticky="ew", pady=(0, 14))
+        hero.grid_columnconfigure(1, weight=1)
+        self.ring = anim.ScoreRing(hero, size=140, thickness=12)
+        self.ring.grid(row=0, column=0, rowspan=2, padx=(22, 18), pady=18)
+        self.hero_title = w.label(hero, "Sprawdzam komputer…", "heading", c.text, "bold")
+        self.hero_title.grid(row=0, column=1, sticky="sw", pady=(20, 0))
+        self.hero_sub = w.label(hero, "Analiza trwa kilka sekund.", "body", c.muted, wraplength=520)
+        self.hero_sub.grid(row=1, column=1, sticky="nw")
+        hb = ctk.CTkFrame(hero, fg_color="transparent")
+        hb.grid(row=0, column=2, rowspan=2, padx=22)
+        self.fps_btn = w.button(hb, "🚀  Zwiększ FPS", self.boost_fps, "primary", height=46, width=190)
+        self.fps_btn.pack()
+        w.button(hb, "Pełna analiza", lambda: app.show_page("diagnostics"), "ghost", height=32, width=190).pack(pady=(8, 0))
+        self.hero_steps = w.label(hero, "", "small", c.accent2, wraplength=560)
+        self.hero_steps.grid(row=2, column=0, columnspan=3, sticky="w", padx=22, pady=(0, 14))
+        self._score_at = 0.0
+
         row = ctk.CTkFrame(self, fg_color="transparent")
-        row.grid(row=0, column=0, sticky="ew")
+        row.grid(row=1, column=0, sticky="ew")
         for i in range(4):
             row.grid_columnconfigure(i, weight=1, uniform="tiles")
         self.t_ram = w.StatTile(row, "Pamięć RAM", bar_color=c.accent)
@@ -31,8 +50,8 @@ class DashboardPage(Page):
             t.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 8, 0 if i == 3 else 8))
 
         bottom = ctk.CTkFrame(self, fg_color="transparent")
-        bottom.grid(row=1, column=0, sticky="nsew", pady=(16, 0))
-        self.grid_rowconfigure(1, weight=1)
+        bottom.grid(row=2, column=0, sticky="nsew", pady=(16, 0))
+        self.grid_rowconfigure(2, weight=1)
         bottom.grid_columnconfigure(0, weight=3, uniform="b")
         bottom.grid_columnconfigure(1, weight=2, uniform="b")
         bottom.grid_rowconfigure(0, weight=1)
@@ -70,6 +89,7 @@ class DashboardPage(Page):
     # ------------------------------------------------------------------ odświeżanie
     def on_show(self) -> None:
         self._refresh_detected()
+        self._refresh_score()
         if not self._scanned:
             self._scanned = True
             self._scan_cache()
@@ -170,3 +190,52 @@ class DashboardPage(Page):
             self.q_res.configure(text=f"Błąd: {e}", text_color=c.danger)
 
         self.app.bg.run(work, done, fail)
+
+    # ------------------------------------------------------------------ wynik kondycji
+    def _refresh_score(self, force: bool = False) -> None:
+        import time as _t
+        if not force and _t.time() - self._score_at < 90:
+            return
+        self._score_at = _t.time()
+
+        def work():
+            facts = analyzer.collect_facts(self.app)
+            fs = analyzer.analyze(facts)
+            return analyzer.score(fs), [f for f in fs if f.severity in ("crit", "warn")]
+
+        def done(res):
+            sc, issues = res
+            self.ring.set(sc)
+            if sc >= 85:
+                self.hero_title.configure(text="Komputer jest w świetnej formie")
+                self.hero_sub.configure(text="Nic poważnego nie wymaga uwagi. „Zwiększ FPS” zwolni jeszcze trochę zasobów przed grą.")
+            else:
+                self.hero_title.configure(text=f"Znaleziono {len(issues)} " + ("problem" if len(issues) == 1 else "problemów do poprawy"))
+                self.hero_sub.configure(text="Najważniejsze: " + "; ".join(f.title for f in issues[:2]) + ". Otwórz pełną analizę, by je naprawić.")
+
+        self.app.bg.run(work, done, lambda e: self.hero_title.configure(text="Nie udało się sprawdzić komputera"))
+
+    def boost_fps(self) -> None:
+        """Bezpieczne optymalizacje pod grę: ustawienia Windows, RAM, DNS i dopingowanie uruchomionych gier."""
+        self.fps_btn.configure(state="disabled", text="Optymalizuję…")
+        tasks = ["tweaks", "ram", "dns", "game_boost"]
+        done_lines: list[str] = []
+
+        def work():
+            running = cleaner.running_processes()
+            out = []
+            for i, t in enumerate(tasks):
+                self.app.bg.call(self.hero_steps.configure, text=f"{automation.TASK_LABELS[t]}…")
+                ok, msg = automation.run_task(t, self.app.settings, self.app.catalog, self.app.games, running)
+                out.append((t, ok, msg))
+            return out
+
+        def done(res):
+            self.fps_btn.configure(state="normal", text="🚀  Zwiększ FPS")
+            good = [m for _t, ok, m in res if ok]
+            self.hero_steps.configure(text="✓ " + "   ✓ ".join(f"{automation.TASK_LABELS[t]}" for t, ok, _m in res if ok), text_color=c.success)
+            self.app.toast.show("Gotowe - komputer jest przygotowany do gry.", "ok")
+            self._refresh_score(force=True)
+
+        self.app.bg.run(work, done, lambda e: (self.fps_btn.configure(state="normal", text="🚀  Zwiększ FPS"),
+                                               self.app.toast.show(f"Błąd: {e}", "err")))

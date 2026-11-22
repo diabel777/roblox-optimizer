@@ -15,12 +15,14 @@ _FALLBACK = {
     "fonts": {"family": "Segoe UI", "title": 24, "heading": 15, "body": 13, "small": 11},
     "radius": {"card": 14, "button": 10},
     "window": {"width": 1140, "height": 780, "min_width": 980, "min_height": 680},
+    "animations": True,
 }
 
 c = SimpleNamespace()      # kolory      -> theme.c.accent
 f = SimpleNamespace()      # fonty (rozmiary)
 r = SimpleNamespace()      # zaokrąglenia
 win = SimpleNamespace()    # okno
+flags = SimpleNamespace(animations=True)
 _font_cache: dict = {}
 
 
@@ -30,6 +32,7 @@ def load() -> None:
     f.__dict__.update(data["fonts"])
     r.__dict__.update(data["radius"])
     win.__dict__.update(data["window"])
+    flags.animations = bool(data.get("animations", True))
     _font_cache.clear()
     ctk.set_appearance_mode("dark")
 

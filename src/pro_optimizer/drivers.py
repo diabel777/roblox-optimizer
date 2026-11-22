@@ -6,6 +6,7 @@ aktualizacja może unieruchomić płytę, więc pokazujemy wersję, stronę prod
 from __future__ import annotations
 
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -138,13 +139,24 @@ def install_driver_updates(ids: list[str]) -> tuple[bool, str]:
     return False, "Windows Update nie zainstalował sterowników (kod %s)." % (m.group(1) if m else "?")
 
 
+def _winget_path() -> str:
+    """winget z folderu WindowsApps użytkownika (jedyne prawidłowe miejsce) - bez szukania w bieżącym folderze."""
+    cand = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "WindowsApps", "winget.exe")
+    if os.path.isfile(cand):
+        return cand
+    found = shutil.which("winget")
+    if found and os.path.isabs(found) and os.path.dirname(os.path.abspath(found)).lower() != os.getcwd().lower():
+        return found
+    return ""
+
+
 def have_winget() -> bool:
-    return shutil.which("winget") is not None
+    return bool(_winget_path())
 
 
 def winget_upgrade_all() -> tuple[bool, str]:
     """Aktualizuje zainstalowane programy przez winget (tryb cichy)."""
-    exe = shutil.which("winget")
+    exe = _winget_path()
     if not exe:
         return False, "Nie znaleziono winget (Instalator aplikacji) - zainstaluj go ze sklepu Microsoft Store."
     try:

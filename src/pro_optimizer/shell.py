@@ -12,6 +12,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
+from .ps import system_exe
 from .version import APP_EXE, APP_ID, APP_NAME, VERSION
 
 log = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ def create_shortcut(lnk: Path, target: Path, icon: Optional[Path] = None, descri
         lnk.parent.mkdir(parents=True, exist_ok=True)
         env = dict(os.environ, POU_LNK=str(lnk), POU_TARGET=str(target), POU_WD=str(target.parent),
                    POU_ICON=f"{icon or target},0", POU_DESC=description)
-        subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+        subprocess.run([system_exe("powershell"), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
                         "-Command", _PS_LINK], env=env, creationflags=NO_WINDOW, timeout=40,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as e:
@@ -140,7 +141,7 @@ def stop_running_app() -> None:
     if not NT:
         return
     try:
-        subprocess.run(["taskkill", "/IM", APP_EXE, "/F"], creationflags=NO_WINDOW, timeout=15,
+        subprocess.run([system_exe("taskkill"), "/IM", APP_EXE, "/F"], creationflags=NO_WINDOW, timeout=15,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception:
         pass

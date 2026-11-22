@@ -8,7 +8,7 @@ from typing import Any, Callable, Optional
 
 import customtkinter as ctk
 
-from . import theme
+from . import anim, theme
 from .theme import c, font, r
 
 log = logging.getLogger(__name__)
@@ -150,7 +150,7 @@ class StatTile(ctk.CTkFrame):
         self.v.configure(text=value)
         self.s.configure(text=sub)
         if self.bar is not None and frac is not None:
-            self.bar.set(max(0.0, min(1.0, frac)))
+            anim.smooth_bar(self.bar, frac)
             if color:
                 self.bar.configure(progress_color=color)
 
@@ -225,8 +225,9 @@ class Toast(ctk.CTkFrame):
         col = getattr(c, self.COLORS.get(kind, "accent2"))
         self.configure(border_color=col)
         self.lbl.configure(text=text)
-        self.place(relx=1.0, rely=1.0, x=-24, y=-24, anchor="se")
+        self.place(relx=1.0, rely=1.0, x=-24 + 70, y=-24, anchor="se")
         self.lift()
+        anim.tween(self, 260, lambda t: self.place_configure(x=-24 + round(70 * (1 - t))))
         if self._job:
             self.root.after_cancel(self._job)
         self._job = self.root.after(ms, self.place_forget)

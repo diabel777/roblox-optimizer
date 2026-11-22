@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable, Optional
 
+from .ps import system_exe
+
 log = logging.getLogger(__name__)
 
 _REPARSE = 0x400
@@ -58,16 +60,50 @@ def _exact_roots() -> set[str]:
     return out
 
 
-def is_safe_target(path: str | Path) -> bool:
-    """Czy wolno czyścić zawartość tego folderu."""
+# Foldery z danymi logowania, certyfikatami i naszymi kopiami - nie czyścimy ich NIGDY, niezależnie od konfiguracji.
+_DENY_COMPONENTS = {"credentials", "protect", "vault", "crypto", "systemcertificates", "packages", "identitycrl",
+                    "proultimateoptimizer", "backups", "keychain", "dpapi"}
+
+
+def _denied(parts: list[str]) -> bool:
+    return any(x.lower() in _DENY_COMPONENTS for x in parts)
+
+
+def is_safe_target(path: str | Path, user: bool = False) -> bool:
+    """Czy wolno czyścić zawartość tego folderu. Wpisy użytkownika (user=True) mają dodatkowe, ostrzejsze reguły:
+    głębokość >= 3, bez ProgramData i bez wildcardów w pierwszych dwóch składnikach."""
     n = _norm(path)
     if n in _exact_roots():
-        return True
+        return not user
     for root in _allowed_roots():
+        if user and root == _env_path("PROGRAMDATA"):
+            continue
         if n.startswith(root + os.sep):
             rel = n[len(root) + 1:].split(os.sep)
+            if _denied(rel):
+                return False
+            if user:
+                return len(rel) >= 3
             if len(rel) >= 2 or rel[0].lower() in _SINGLE_COMPONENT_OK:
                 return True
+    return False
+
+
+def _chain_has_reparse(path: Path) -> bool:
+    """True, jeśli sam folder LUB którykolwiek jego przodek (aż do korzenia AppData itp.) jest linkiem/junctionem.
+    Chroni przed podmianą folderu cache na junction do cudzego katalogu."""
+    roots = set(_allowed_roots()) | _exact_roots()
+    cur = Path(os.path.abspath(str(path)))
+    for _ in range(40):
+        try:
+            st = os.lstat(cur)
+        except OSError:
+            return True
+        if os.path.islink(cur) or bool(getattr(st, "st_file_attributes", 0) & _REPARSE):
+            return True
+        if _norm(cur) in roots or cur.parent == cur:
+            break
+        cur = cur.parent
     return False
 
 
@@ -80,20 +116,30 @@ def _is_reparse(entry: os.DirEntry) -> bool:
         return True
 
 
+def _wild_too_early(raw: str) -> bool:
+    """Wildcard w pierwszych dwóch składnikach po zmiennej środowiskowej (np. %APPDATA%\\*\\*) = za szeroko."""
+    parts = [x for x in re.split(r"[\\/]+", raw) if x]
+    tail = parts[1:] if parts and parts[0].startswith("%") else parts
+    return any(any(ch in x for ch in "*?[") for x in tail[:2])
+
+
 def resolve_paths(entry: dict) -> list[Path]:
     """Rozwija zmienne środowiskowe i wildcardy; zwraca istniejące, bezpieczne foldery."""
     found: list[Path] = []
     seen: set[str] = set()
-    for raw in entry.get("paths", []):
+    user = bool(entry.get("user"))
+    for raw in (r for r in entry.get("paths", []) if isinstance(r, str)):
         p = expand(raw)
         if "%" in p:                       # nierozwiązana zmienna
             continue
         for m in (glob.glob(p) if any(c in p for c in "*?[") else [p]):
             mp = Path(m)
             key = _norm(mp)
-            if key in seen or not mp.is_dir() or mp.is_symlink():
+            if key in seen or not mp.is_dir() or _chain_has_reparse(mp):
                 continue
-            if not is_safe_target(mp):
+            if user and any(ch in raw for ch in "*?[") and _wild_too_early(raw):
+                continue
+            if not is_safe_target(mp, user):
                 log.warning("Pominięto niebezpieczną ścieżkę: %s", mp)
                 continue
             seen.add(key)
@@ -106,7 +152,7 @@ def running_processes() -> set[str]:
     if os.name != "nt":
         return set()
     try:
-        out = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True, errors="ignore",
+        out = subprocess.run([system_exe("tasklist"), "/FO", "CSV", "/NH"], capture_output=True, text=True, errors="ignore",
                              timeout=15, creationflags=0x08000000).stdout
     except Exception:
         return set()
@@ -236,7 +282,7 @@ def clean(entries: list[dict], running: Optional[set[str]] = None, force: bool =
             r.error = "Uruchomiona: " + ", ".join(r.blocked_by)
         else:
             for p in pl:
-                if not is_safe_target(p):   # podwójne zabezpieczenie tuż przed kasowaniem
+                if not is_safe_target(p, bool(e.get("user"))) or _chain_has_reparse(p):   # kontrola tuż przed kasowaniem
                     continue
                 _clean_dir(p, claimed, r)
             log.info("Wyczyszczono %s: %s (%d plików, pominięto %d)", r.id, fmt_bytes(r.size), r.files, r.skipped)

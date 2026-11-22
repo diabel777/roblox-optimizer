@@ -1,10 +1,8 @@
 """Optymalizacja gier: każda gra ma własne, niezależne ustawienia (GPU, pełny ekran, priorytet, doping przy starcie)."""
 from __future__ import annotations
 
-import hashlib
 import os
 import tkinter as tk
-from tkinter import filedialog
 
 import customtkinter as ctk
 
@@ -35,7 +33,6 @@ class GamesPage(Page):
         bar.pack(fill="x", padx=12, pady=(12, 6))
         self.btn_detect = w.button(bar, "Wykryj gry", self.detect, "primary", height=34, width=110)
         self.btn_detect.pack(side="left")
-        w.button(bar, "+ Dodaj .exe", self.add_custom, "ghost", height=34, width=110).pack(side="right")
         self.lst = w.scroll_frame(left)
         self.lst.pack(fill="both", expand=True, padx=4, pady=(0, 8))
 
@@ -145,31 +142,6 @@ class GamesPage(Page):
 
         self.app.bg.run(work, done, fail)
 
-    def add_custom(self) -> None:
-        path = filedialog.askopenfilename(title="Wybierz plik .exe gry", filetypes=[("Program", "*.exe")])
-        if not path:
-            return
-        if not gm.safe_exe_path(path):
-            self.app.toast.show("Nieprawidłowy plik.", "warn")
-            return
-        gid = "custom_" + hashlib.sha1(path.lower().encode()).hexdigest()[:8]
-        customs = [g for g in (self.app.settings.get("custom_games") or []) if g["id"] != gid]
-        customs.append({"id": gid, "name": os.path.splitext(os.path.basename(path))[0], "exe": path,
-                        "exes": [os.path.basename(path)], "custom": True})
-        self.app.settings.set("custom_games", customs)
-        self.app.reload_games()
-        self._build_list()
-        self.select(gid)
-
-    def remove_custom(self, gid: str) -> None:
-        if not w.confirm(self, "Usuń grę z listy", "Usunąć tę grę z listy? Zastosowane ustawienia pozostaną - cofnij je najpierw.",
-                         "Usuń", danger=True):
-            return
-        self.app.settings.set("custom_games", [g for g in (self.app.settings.get("custom_games") or []) if g["id"] != gid])
-        self.app.reload_games()
-        self._build_list()
-        self.select(self.app.games[0]["id"])
-
     # ------------------------------------------------------------------ szczegóły
     def select(self, gid: str) -> None:
         self.sel = gid
@@ -188,17 +160,13 @@ class GamesPage(Page):
         top = ctk.CTkFrame(head, fg_color="transparent", height=1)
         top.pack(fill="x", padx=20, pady=(16, 2))
         w.label(top, g["name"], "title", c.text, "bold").pack(side="left")
-        if g.get("custom"):
-            w.button(top, "Usuń z listy", lambda: self.remove_custom(gid), "ghost", height=30, width=110).pack(side="right")
         if g.get("desc"):
             w.label(head, g["desc"], "small", c.muted, wraplength=520).pack(fill="x", padx=20)
         if exe:
             w.label(head, exe, "small", c.accent2, wraplength=520).pack(fill="x", padx=20, pady=(6, 0))
         else:
-            w.label(head, "Nie znaleziono gry na tym komputerze. Wskaż plik .exe ręcznie albo kliknij „Wykryj gry”.",
+            w.label(head, "Nie znaleziono tej gry na tym komputerze. Kliknij „Wykryj gry”, jeśli właśnie ją zainstalowałeś.",
                     "small", c.warning, wraplength=520).pack(fill="x", padx=20, pady=(6, 0))
-        if not is_rb:
-            w.button(head, "Wskaż plik .exe…", lambda: self._pick_exe(gid), "ghost", height=30, width=140).pack(anchor="w", padx=20, pady=(8, 0))
         ctk.CTkFrame(head, height=14, fg_color="transparent").pack()
 
         opts = w.card(body)
@@ -236,15 +204,6 @@ class GamesPage(Page):
             rv = RobloxPage(wrap, self.app, embedded=True)
             rv.pack(fill="x", padx=8, pady=(4, 8))
             rv.on_show()
-
-    def _pick_exe(self, gid: str) -> None:
-        path = filedialog.askopenfilename(title="Wskaż plik .exe gry", filetypes=[("Program", "*.exe")])
-        if path and gm.safe_exe_path(path):
-            self._set_saved(gid, "exe", path)
-            self.exe_cache[gid] = path
-            g = self._game(gid)
-            g["exe"] = path
-            self.select(gid)
 
     def _set_saved(self, gid: str, key: str, val) -> None:
         saved = dict(self.app.settings.get("games") or {})

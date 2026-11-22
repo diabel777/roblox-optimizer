@@ -13,6 +13,8 @@ import threading
 from dataclasses import dataclass, field
 from typing import Optional
 
+from .ps import system_exe
+
 log = logging.getLogger(__name__)
 IS_WINDOWS = os.name == "nt"
 _NOWIN = 0x08000000
@@ -192,7 +194,7 @@ def gpu_names_wmi() -> list[str]:
     if not IS_WINDOWS:
         return []
     try:
-        out = subprocess.run(["powershell", "-NoProfile", "-Command",
+        out = subprocess.run([system_exe("powershell"), "-NoProfile", "-Command",
                               "(Get-CimInstance Win32_VideoController).Name -join '|'"],
                              capture_output=True, text=True, timeout=20, creationflags=_NOWIN).stdout
         return [x.strip() for x in out.split("|") if x.strip()]
@@ -206,7 +208,7 @@ def cpu_temp() -> Optional[float]:
         return None
     try:
         out = subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
+            [system_exe("powershell"), "-NoProfile", "-Command",
              "(Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction Stop "
              "| Select -First 1).CurrentTemperature"],
             capture_output=True, text=True, timeout=15, creationflags=_NOWIN).stdout.strip()

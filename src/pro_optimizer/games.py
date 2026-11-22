@@ -54,11 +54,29 @@ def gpu_pref_value(high: bool = True) -> str:
     return "GpuPreference=2;" if high else "GpuPreference=0;"
 
 
+# Procesy systemowe - nigdy nie ustawiamy dla nich priorytetu/GPU/pełnego ekranu (IFEO na nich = ryzyko niestabilności).
+_CRITICAL_EXES = {"csrss.exe", "smss.exe", "wininit.exe", "winlogon.exe", "lsass.exe", "services.exe", "svchost.exe",
+                  "explorer.exe", "dwm.exe", "taskmgr.exe", "cmd.exe", "powershell.exe", "pwsh.exe", "regedit.exe",
+                  "reg.exe", "msiexec.exe", "rundll32.exe", "conhost.exe", "sihost.exe", "fontdrvhost.exe",
+                  "ctfmon.exe", "audiodg.exe", "spoolsv.exe", "wuauclt.exe", "msmpeng.exe", "mpcmdrun.exe"}
+_EXE_NAME = re.compile(r"^[A-Za-z0-9_.\- ]{1,80}\.exe$")
+
+
+def safe_exe_name(name: str) -> bool:
+    return bool(_EXE_NAME.match(name or "")) and name.lower() not in _CRITICAL_EXES
+
+
 def safe_exe_path(p: str) -> bool:
-    """Tylko istniejąca bezwzględna ścieżka do .exe bez znaków sterujących."""
-    if not p or any(ch in p for ch in "\r\n\0\"") or not p.lower().endswith(".exe"):
+    """Tylko bezwzględna ścieżka do zwykłego .exe (nie systemowego) bez znaków sterujących."""
+    if not p or len(p) > 400 or any(ch in p for ch in "\r\n\0\"") or not p.lower().endswith(".exe"):
         return False
-    return os.path.isabs(p) or re.match(r"^[A-Za-z]:[\\/]", p) is not None
+    if not (os.path.isabs(p) or re.match(r"^[A-Za-z]:[\\/]", p)):
+        return False
+    base = re.split(r"[\\/]", p)[-1]
+    if not safe_exe_name(base):
+        return False
+    win = (os.environ.get("SystemRoot") or os.environ.get("WINDIR") or "").lower().rstrip("\\/")
+    return not (win and p.lower().replace("/", "\\").startswith(win + "\\"))
 
 
 # --------------------------------------------------------------------------- wykrywanie

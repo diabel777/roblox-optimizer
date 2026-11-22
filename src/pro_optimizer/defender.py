@@ -70,9 +70,11 @@ def update_signatures() -> tuple[bool, str]:
 def scan(kind: str = "quick", path: Optional[str] = None) -> tuple[bool, str]:
     """kind: quick | full | custom (path). Blokuje do końca skanu - wołaj z wątku w tle."""
     if kind == "custom":
-        if not path or any(ch in path for ch in '"\'`$\r\n;'):
+        if not path or len(path) > 400 or any(ord(ch) < 32 for ch in path) or not os.path.isabs(path) or not os.path.isdir(path):
             return False, "Nieprawidłowa ścieżka."
-        cmd = f"Start-MpScan -ScanType CustomScan -ScanPath '{path}'"
+        # ścieżka idzie przez zmienną środowiskową, a nie przez sklejanie tekstu skryptu - nie da się wstrzyknąć poleceń
+        rc, out = ps.run("Start-MpScan -ScanType CustomScan -ScanPath $env:POU_SCANPATH", 4 * 3600, env={"POU_SCANPATH": path})
+        return rc == 0, "Skanowanie zakończone." if rc == 0 else (out[:240] or "Skanowanie przerwane.")
     else:
         cmd = "Start-MpScan -ScanType " + ("FullScan" if kind == "full" else "QuickScan")
     rc, out = ps.run(cmd, 4 * 3600)

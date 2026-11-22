@@ -13,6 +13,8 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
+
+from .ps import system_exe
 from typing import Any, Optional
 
 log = logging.getLogger(__name__)
@@ -46,7 +48,7 @@ def relaunch_as_admin() -> bool:
 
 def _run(cmd: list[str], timeout: int = 60) -> tuple[int, str]:
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, errors="ignore", timeout=timeout,
+        r = subprocess.run([system_exe(cmd[0]), *cmd[1:]], capture_output=True, text=True, errors="ignore", timeout=timeout,
                            creationflags=_NOWIN if IS_WINDOWS else 0)
         return r.returncode, (r.stdout or "") + (r.stderr or "")
     except Exception as e:
@@ -241,6 +243,30 @@ TWEAKS: list[Tweak] = [
     Tweak("transparency", "Wyłącz przezroczystość okien",
           "Odciąża GPU/CPU w interfejsie Windows (przydatne na słabszych komputerach).",
           values=[RegValue("HKCU", r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "EnableTransparency", "DWORD", 0)]),
+    Tweak("fse", "Pełny ekran bez optymalizacji Windows",
+          "Gry w pełnym ekranie dostają obraz bezpośrednio - mniejsze opóźnienie i mniej przycięć.",
+          values=[RegValue("HKCU", r"System\GameConfigStore", "GameDVR_FSEBehaviorMode", "DWORD", 2),
+                  RegValue("HKCU", r"System\GameConfigStore", "GameDVR_HonorUserFSEBehaviorMode", "DWORD", 1),
+                  RegValue("HKCU", r"System\GameConfigStore", "GameDVR_FSEBehavior", "DWORD", 2),
+                  RegValue("HKCU", r"System\GameConfigStore", "GameDVR_DXGIHonorFSEWindowsCompatible", "DWORD", 1)]),
+    Tweak("power_throttling", "Wyłącz ograniczanie mocy procesora",
+          "Windows przestaje przycinać wydajność programów, które uzna za działające w tle.", admin=True,
+          values=[RegValue("HKLM", r"SYSTEM\CurrentControlSet\Control\Power\PowerThrottling", "PowerThrottlingOff", "DWORD", 1)]),
+    Tweak("prio_sep", "Priorytet programu na pierwszym planie",
+          "Aktywna gra dostaje dłuższe porcje czasu procesora niż programy w tle.", admin=True,
+          values=[RegValue("HKLM", r"SYSTEM\CurrentControlSet\Control\PriorityControl", "Win32PrioritySeparation", "DWORD", 38)]),
+    Tweak("mouse_accel", "Wyłącz przyspieszanie myszy",
+          "Ruch kursora jest wprost proporcjonalny do ruchu myszy - celniej w grach.",
+          values=[RegValue("HKCU", r"Control Panel\Mouse", "MouseSpeed", "SZ", "0"),
+                  RegValue("HKCU", r"Control Panel\Mouse", "MouseThreshold1", "SZ", "0"),
+                  RegValue("HKCU", r"Control Panel\Mouse", "MouseThreshold2", "SZ", "0")]),
+    Tweak("bg_apps", "Zablokuj aplikacje działające w tle",
+          "Aplikacje ze Sklepu nie pracują w tle, więc zostaje więcej RAM i procesora dla gry.",
+          values=[RegValue("HKCU", r"Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications",
+                           "GlobalUserDisabled", "DWORD", 1)]),
+    Tweak("min_anim", "Wyłącz animacje okien Windows",
+          "Okna otwierają się i zamykają natychmiast - mniej pracy dla GPU i szybszy pulpit.",
+          values=[RegValue("HKCU", r"Control Panel\Desktop\WindowMetrics", "MinAnimate", "SZ", "0")]),
 ]
 
 

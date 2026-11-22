@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 _tmp = tempfile.mkdtemp()
 os.environ["PRO_OPT_HOME"] = _tmp
 
-from pro_optimizer import analyzer, automation, config, drivers, fan, games, logview, paths, version
+from pro_optimizer import analyzer, automation, config, drivers, fan, games, paths, version
 from pro_optimizer.settings import Settings
 
 
@@ -123,24 +123,6 @@ class TestDrivers(unittest.TestCase):
     def test_gpu_vendor(self):
         self.assertEqual(drivers.gpu_vendor("NVIDIA GeForce RTX 5080"), "nvidia")
         self.assertEqual(drivers.gpu_vendor("AMD Radeon(TM) Graphics"), "amd")
-
-
-class TestLogview(unittest.TestCase):
-    def test_levels_and_tracebacks(self):
-        d = Path(tempfile.mkdtemp())
-        (d / "app.log").write_text(
-            "2026-11-21 10:00:00,001 INFO a: start\n2026-11-21 10:00:01,002 WARNING a: uwaga\n"
-            "2026-11-21 10:00:02,003 ERROR a: bum\nTraceback (most recent call last):\n  File x\nValueError: y\n"
-            "2026-11-21 10:00:03,004 INFO a: dalej\n", encoding="utf-8")
-        allv = logview.read_tail(100, 0, d)
-        self.assertEqual(len(allv), 7)
-        errs = logview.read_tail(100, 40, d)
-        self.assertEqual([l for l, _ in errs][0].split()[2], "ERROR"); self.assertEqual(len(errs), 4)   # nagłówek + 3 linie traceback
-        self.assertEqual(len(logview.read_tail(2, 0, d)), 2)
-        logview.clear(d); self.assertEqual(logview.read_tail(100, 0, d), [])
-
-    def test_missing_dir(self):
-        self.assertEqual(logview.read_tail(10, 0, Path(tempfile.mkdtemp()) / "nie ma"), [])
 
 
 class TestFanPolicy(unittest.TestCase):

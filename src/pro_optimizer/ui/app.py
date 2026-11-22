@@ -18,7 +18,7 @@ from ..security import SecurityError
 from ..settings import Settings
 from ..updater import UpdateError, UpdateInfo, Updater, installed_versions
 from ..version import APP_NAME, LAUNCHER_EXE, VERSION
-from . import theme, widgets as w
+from . import anim, theme, widgets as w
 from .theme import c, font
 
 log = logging.getLogger(__name__)
@@ -41,6 +41,7 @@ class Page(ctk.CTkFrame):
 class App(ctk.CTk):
     def __init__(self):
         theme.load()
+        anim.set_enabled(theme.flags.animations)
         super().__init__(fg_color=c.bg)
         self.title(f"{APP_NAME}  v{VERSION}")
         self.geometry(f"{theme.win.width}x{theme.win.height}")
@@ -104,7 +105,7 @@ class App(ctk.CTk):
     # ------------------------------------------------------------------ układ
     def _build_layout(self) -> None:
         from .pages import (antivirus_page, automation_page, backups_page, cleaner_page, dashboard, diagnostics_page,
-                            drivers_page, fan_page, games_page, logs_page, settings_page, system_page)
+                            drivers_page, fan_page, games_page, settings_page, system_page)
         self.page_defs = [
             ("dashboard", "Panel główny", dashboard.DashboardPage),
             ("games", "Optymalizacja gier", games_page.GamesPage),
@@ -116,7 +117,6 @@ class App(ctk.CTk):
             ("antivirus", "Antywirus", antivirus_page.AntivirusPage),
             ("drivers", "Sterowniki i BIOS", drivers_page.DriversPage),
             ("backups", "Kopie zapasowe", backups_page.BackupsPage),
-            ("logs", "Logi", logs_page.LogsPage),
             ("settings", "Ustawienia i aktualizacje", settings_page.SettingsPage),
         ]
         self.grid_columnconfigure(1, weight=1)
@@ -138,12 +138,20 @@ class App(ctk.CTk):
         w.label(names, "Optimizer", "small", c.accent2, "bold").pack(anchor="w")
 
         w.label(side, "MENU", "small", c.muted, "bold").pack(fill="x", padx=24, pady=(0, 4))
+        navwrap = ctk.CTkFrame(side, fg_color="transparent")
+        navwrap.pack(fill="x")
+        self.nav_indicator = ctk.CTkFrame(navwrap, width=4, height=22, corner_radius=2, fg_color=c.accent)
+        self._nav_anim = anim.Animator()
+        self._nav_col: dict[str, str] = {}
         for pid, title, _cls in self.page_defs:
-            b = ctk.CTkButton(side, text=title, anchor="w", height=34, corner_radius=9, font=font("body", "bold"),
-                              fg_color="transparent", hover_color=theme.blend(c.sidebar, "#FFFFFF", 0.07),
-                              text_color=c.muted, command=lambda p=pid: self.show_page(p))
+            b = ctk.CTkButton(navwrap, text=title, anchor="w", height=34, corner_radius=9, font=font("body", "bold"),
+                              fg_color=c.sidebar, hover=False, text_color=c.muted,
+                              command=lambda p=pid: self.show_page(p))
             b.pack(fill="x", padx=14, pady=1)
+            b.bind("<Enter>", lambda e, p=pid: self._nav_hover(p, True), add="+")
+            b.bind("<Leave>", lambda e, p=pid: self._nav_hover(p, False), add="+")
             self._nav[pid] = b
+            self._nav_col[pid] = c.sidebar
 
         # --- stopka z aktualizacją
         foot = w.card(side, fg_color=theme.blend(c.sidebar, "#FFFFFF", 0.04))
@@ -173,21 +181,52 @@ class App(ctk.CTk):
         self.container.grid_columnconfigure(0, weight=1)
         self.container.grid_rowconfigure(0, weight=1)
 
+    def _nav_target(self, pid: str, hover: bool) -> str:
+        if pid == self._current:
+            return theme.blend(c.sidebar, c.accent, 0.22)
+        return theme.blend(c.sidebar, "#FFFFFF", 0.07) if hover else c.sidebar
+
+    def _nav_fade(self, pid: str, target: str, ms: int = 140) -> None:
+        b = self._nav[pid]
+        start = self._nav_col.get(pid, c.sidebar)
+
+        def step(t):
+            col = theme.blend(start, target, t)
+            self._nav_col[pid] = col
+            b.configure(fg_color=col)
+        self._nav_anim.run(pid, b, ms, step)
+
+    def _nav_hover(self, pid: str, inside: bool) -> None:
+        self._nav_fade(pid, self._nav_target(pid, inside))
+
+    def _move_indicator(self, pid: str) -> None:
+        b = self._nav[pid]
+        self.update_idletasks()
+        y = b.winfo_y() + (b.winfo_height() - 22) // 2
+        if not self.nav_indicator.winfo_ismapped():
+            self.nav_indicator.place(x=4, y=y)
+            return
+        y0 = self.nav_indicator.winfo_y()
+        anim.tween(self.nav_indicator, 240, lambda t: self.nav_indicator.place_configure(y=round(y0 + (y - y0) * t)))
+
     def show_page(self, pid: str) -> None:
-        if pid not in self._pages:
+        first = pid not in self._pages
+        if first:
             cls = next(cl for p, _t, cl in self.page_defs if p == pid)
             page = cls(self.container, self)
-            page.grid(row=0, column=0, sticky="nsew")
+            page.place(x=0, y=0, relwidth=1, relheight=1)
             self._pages[pid] = page
         page = self._pages[pid]
         page.tkraise()
-        self._current = pid
+        prev, self._current = self._current, pid
         self.h_title.configure(text=page.title)
         self.h_sub.configure(text=page.subtitle)
-        for p, b in self._nav.items():
-            active = p == pid
-            b.configure(fg_color=theme.blend(c.sidebar, c.accent, 0.22) if active else "transparent",
-                        text_color=c.text if active else c.muted)
+        for p in self._nav:
+            self._nav_fade(p, self._nav_target(p, False), 160)
+            self._nav[p].configure(text_color=c.text if p == pid else c.muted)
+        self._move_indicator(pid)
+        if prev is not None and prev != pid:
+            anim.slide_in(page)
         page.on_show()
 
     def current_page_id(self) -> Optional[str]:
@@ -221,7 +260,6 @@ class App(ctk.CTk):
             if saved.get(g["id"], {}).get("exe") and not g.get("kind", "").startswith("roblox"):
                 g["exe"] = saved[g["id"]]["exe"]
             out.append(g)
-        out += [dict(g) for g in (self.settings.get("custom_games") or [])]
         self.games = out
 
     # ------------------------------------------------------------------ czujniki i wentylator
