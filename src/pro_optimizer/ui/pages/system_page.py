@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import sys
+import threading
 import tkinter as tk
 
 import customtkinter as ctk
 
-from ... import winsys
+from ... import autotune, nettools, winsys
 from ...cleaner import fmt_bytes
 from .. import theme, widgets as w
 from ..app import Page
@@ -14,7 +15,7 @@ from ..theme import c
 
 
 class SystemPage(Page):
-    title = "Windows i sieć"
+    title = "Szybszy Windows i internet"
     subtitle = "Każdą zmianę możesz cofnąć jednym przełącznikiem - oryginalne ustawienia są zapamiętywane."
 
     def __init__(self, master, app):
@@ -41,6 +42,36 @@ class SystemPage(Page):
                          "podniesiesz je tylko wtedy, gdy będzie to potrzebne.", "small", c.muted, wraplength=560).pack(fill="x")
             w.button(inner, "Uruchom jako administrator", self.elevate, "primary", width=210).pack(side="right")
             r += 1
+
+        qc = w.card(body, border_color=theme.blend(c.card, c.accent, 0.5))
+        qc.grid(row=r, column=0, sticky="ew", pady=(0, 14))
+        r += 1
+        w.label(qc, "Jeden przycisk", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 2))
+        w.label(qc, "Aplikacja sprawdzi Twój komputer i włączy tylko to, co bezpieczne i pomaga. Wszystko możesz cofnąć.",
+                "small", c.muted, wraplength=720).pack(fill="x", padx=22)
+        w.button(qc, "Dopasuj do mojego komputera", self.autotune, "primary", height=44, width=300).pack(anchor="w", padx=22, pady=(10, 4))
+        self.auto_out = w.label(qc, "", "small", c.muted, wraplength=720)
+        self.auto_out.pack(fill="x", padx=22, pady=(0, 16))
+
+        nc = w.card(body)
+        nc.grid(row=r, column=0, sticky="ew", pady=(0, 14))
+        r += 1
+        w.label(nc, "Internet i ping", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 2))
+        w.label(nc, "Zmierz opóźnienie do internetu, ustaw szybki DNS i dostrój TCP pod gry.", "small", c.muted).pack(fill="x", padx=22)
+        nr = ctk.CTkFrame(nc, fg_color="transparent", height=1)
+        nr.pack(fill="x", padx=22, pady=(10, 4))
+        w.button(nr, "Sprawdź ping", self.ping, "primary", height=38, width=150).pack(side="left")
+        self.dns_names = {v[0]: k for k, v in nettools.DNS_PROVIDERS.items()}
+        self.dns_menu = w.option_menu(nr, list(self.dns_names), width=300)
+        self.dns_menu.set(nettools.DNS_PROVIDERS["cloudflare"][0])
+        self.dns_menu.pack(side="left", padx=10)
+        w.button(nr, "Ustaw DNS", self.set_dns, "ghost", height=38, width=110).pack(side="left")
+        nr2 = ctk.CTkFrame(nc, fg_color="transparent", height=1)
+        nr2.pack(fill="x", padx=22, pady=(4, 4))
+        w.button(nr2, "Dostrój TCP pod gry", self.tune_tcp, "ghost", height=36, width=190).pack(side="left")
+        w.button(nr2, "Przywróć DNS od dostawcy", self.reset_dns, "ghost", height=36, width=220).pack(side="left", padx=8)
+        self.net_out = w.label(nc, "", "body", c.text, wraplength=720)
+        self.net_out.pack(fill="x", padx=22, pady=(6, 16))
 
         tc = w.card(body)
         tc.grid(row=r, column=0, sticky="ew")
@@ -92,6 +123,59 @@ class SystemPage(Page):
         self.app.bg.run(work, done)
 
     # ------------------------------------------------------------------
+    def autotune(self) -> None:
+        if not winsys.IS_WINDOWS:
+            self.app.toast.show("Dostępne tylko w Windows.", "warn")
+            return
+        ram = winsys.memory_status()
+        p = autotune.plan((ram[0] / 2 ** 30) if ram else None, winsys.is_laptop(), winsys.is_admin())
+        byid = {t.id: t for t in winsys.TWEAKS}
+        names = "\n".join(f"• {byid[i].name} - {p['reasons'].get(i, '')}" for i in p["tweaks"])
+        extra = ("\n\nPominięte:\n" + "\n".join("• " + x for x in p["skipped"])) if p["skipped"] else ""
+        if not w.confirm(self, "Dopasuj do komputera", f"Włączę:\n{names}{extra}\n\nKażdą zmianę możesz cofnąć.", "Włącz"):
+            return
+        self.auto_out.configure(text="Pracuję…", text_color=c.muted)
+
+        def work():
+            done = 0
+            for i in p["tweaks"]:
+                ok, _ = winsys.apply_tweak(byid[i], self.app.settings)
+                done += bool(ok)
+            winsys.flush_dns()
+            return done
+
+        def fin(n):
+            self.auto_out.configure(text=f"Gotowe: włączono {n} z {len(p['tweaks'])} optymalizacji. Czyszczenie DNS wykonane.", text_color=c.success)
+            self.on_show()
+        self.app.bg.run(work, fin)
+
+    def ping(self) -> None:
+        self.net_out.configure(text="Mierzę…", text_color=c.muted)
+
+        def work():
+            return nettools.ping_all()
+
+        def fin(res):
+            lines = []
+            for name, ms in res.items():
+                lbl, _ = nettools.verdict(ms)
+                lines.append(f"{name}: {'-' if ms is None else f'{ms:.0f} ms'}  ({lbl})")
+            self.net_out.configure(text="\n".join(lines) + "\n" + nettools.best_hint(res), text_color=c.text)
+        self.app.bg.run(work, fin)
+
+    def _net_result(self, fn, *a) -> None:
+        self.net_out.configure(text="Pracuję…", text_color=c.muted)
+        self.app.bg.run(lambda: fn(*a), lambda r: self.net_out.configure(text=r[1], text_color=c.success if r[0] else c.warning))
+
+    def set_dns(self) -> None:
+        self._net_result(nettools.set_dns, self.dns_names.get(self.dns_menu.get(), "cloudflare"))
+
+    def reset_dns(self) -> None:
+        self._net_result(nettools.reset_dns)
+
+    def tune_tcp(self) -> None:
+        self._net_result(nettools.tune_tcp)
+
     def elevate(self) -> None:
         if winsys.relaunch_as_admin():
             self.app.destroy()

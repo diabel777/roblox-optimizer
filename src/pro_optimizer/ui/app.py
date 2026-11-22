@@ -14,6 +14,7 @@ import customtkinter as ctk
 
 from .. import automation, config, display, fan as fanmod, games as gamesmod, hw, paths, roblox, winsys
 from ..cleaner import running_processes
+from ..ps import system_exe
 from ..security import SecurityError
 from ..settings import Settings
 from ..updater import UpdateError, UpdateInfo, Updater, installed_versions
@@ -108,17 +109,17 @@ class App(ctk.CTk):
                             controllers_page, drivers_page, fan_page, games_page, settings_page, system_page)
         self.page_defs = [
             ("dashboard", "Panel główny", dashboard.DashboardPage),
-            ("games", "Optymalizacja gier", games_page.GamesPage),
-            ("diagnostics", "Analiza i naprawa", diagnostics_page.DiagnosticsPage),
-            ("automation", "Automatyzacja", automation_page.AutomationPage),
-            ("cleaner", "Czyszczenie aplikacji", cleaner_page.CleanerPage),
-            ("system", "Windows i sieć", system_page.SystemPage),
-            ("fan", "Wentylator i GPU", fan_page.FanPage),
+            ("games", "Gry", games_page.GamesPage),
+            ("diagnostics", "Napraw problemy", diagnostics_page.DiagnosticsPage),
+            ("automation", "Działa samo", automation_page.AutomationPage),
+            ("cleaner", "Czyszczenie", cleaner_page.CleanerPage),
+            ("system", "Szybszy Windows i internet", system_page.SystemPage),
+            ("fan", "Wentylatory", fan_page.FanPage),
             ("controllers", "Pady i kierownice", controllers_page.ControllersPage),
-            ("antivirus", "Antywirus", antivirus_page.AntivirusPage),
-            ("drivers", "Sterowniki i BIOS", drivers_page.DriversPage),
+            ("antivirus", "Ochrona", antivirus_page.AntivirusPage),
+            ("drivers", "Sterowniki", drivers_page.DriversPage),
             ("backups", "Kopie zapasowe", backups_page.BackupsPage),
-            ("settings", "Ustawienia i aktualizacje", settings_page.SettingsPage),
+            ("settings", "Ustawienia", settings_page.SettingsPage),
         ]
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -239,13 +240,47 @@ class App(ctk.CTk):
     # ------------------------------------------------------------------ zadania startowe
     def _startup_tasks(self) -> None:
         self.bg.run(lambda: self.updater.cleanup_old(2))
+
+        def integ_done(res):
+            self.integrity_result = res
+            if res and not res.get("ok"):
+                log.warning("Integralność: %s", res.get("reason"))
+                self.toast.show("Pliki aplikacji różnią się od oryginału (" + res.get("reason", "") + "). "
+                                "Zainstaluj aplikację ponownie z Setup (Napraw / aktualizuj).", "warn", 9000)
+        from .. import integrity
+        self.integrity_result = None
+        self.bg.run(integrity.check_running_app, integ_done)
+        if getattr(sys, "frozen", False) or os.environ.get("PRO_OPT_HOME"):
+            def heal():
+                from .. import selfheal
+                r = selfheal.ensure(last_shortcut_version=str(self.settings.get("shortcuts_version", "")))
+                self.settings.set("shortcuts_version", VERSION)
+                return r
+            self.bg.run(heal)
         self.reapply_roblox(silent_if_none=True)
         self.after(5 * 60 * 1000, self._periodic_roblox)
         self.check_updates(manual=False)                    # aktualizacje zawsze działają same
         self.after(UPDATE_INTERVAL_MIN * 60 * 1000, self._periodic_update)
         self._restore_fan()
+        if self.settings.get("pad"):
+            self._start_pad_keeper()
         self.after(3000, self._hw_tick)
         self.after(20000, self._auto_tick)
+
+    def _start_pad_keeper(self) -> None:
+        from .. import gamepad
+        cache = {"t": 0.0, "ids": []}
+
+        def games():
+            if time.time() - cache["t"] > 10:
+                try:
+                    cache["ids"] = [g["id"] for g in gamesmod.running_game_exes(self.games, running_processes())]
+                except Exception:
+                    cache["ids"] = []
+                cache["t"] = time.time()
+            return cache["ids"]
+        self.pad_keeper = gamepad.Keeper(lambda: self.settings.get("pad"), games)
+        self.pad_keeper.start()
 
     def _periodic_update(self) -> None:
         if self.update_state in ("idle", "uptodate", "error"):
@@ -311,7 +346,11 @@ class App(ctk.CTk):
 
         def done(res):
             running, live = res
+            had = bool(self._boosted)
             self._boosted &= set(live)                       # gra zakończona - następny start dopingujemy znowu
+            if had and not self._boosted:
+                from .. import appopt
+                self.bg.run(appopt.restore_background)       # koniec gry - programy w tle wracają do normalnego priorytetu
             due = automation.plan(cfg, time.time(), last, used, live, self._boosted)
             if "game_boost" in due:
                 self._boosted |= set(live)
@@ -481,6 +520,10 @@ class App(ctk.CTk):
             from ..version import APP_EXE
             target = vers[-1][1] / APP_EXE
         flags = 0x00000008 | 0x00000200 if os.name == "nt" else 0   # DETACHED_PROCESS | NEW_PROCESS_GROUP
-        subprocess.Popen([str(target)], close_fds=True, creationflags=flags)
+        if os.name == "nt" and winsys.is_admin():
+            # nowa wersja ma wstać jako ZWYKŁY użytkownik, a nie odziedziczyć admina: start przez Eksploratora
+            subprocess.Popen([system_exe("explorer"), str(target)], close_fds=True)
+        else:
+            subprocess.Popen([str(target)], close_fds=True, creationflags=flags)
         self.destroy()
         sys.exit(0)

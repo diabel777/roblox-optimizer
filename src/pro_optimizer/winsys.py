@@ -41,7 +41,7 @@ def relaunch_as_admin() -> bool:
     if not IS_WINDOWS:
         return False
     exe = sys.executable
-    params = "" if getattr(sys, "frozen", False) else f'"{os.path.abspath(sys.argv[0])}"'
+    params = "--elevated" if getattr(sys, "frozen", False) else f'"{os.path.abspath(sys.argv[0])}" --elevated'
     rc = ctypes.windll.shell32.ShellExecuteW(None, "runas", exe, params, None, 1)
     return rc > 32
 
@@ -165,6 +165,21 @@ def trim_ram() -> dict:
     after = memory_status()
     freed = max(0, (after[1] - before[1])) if before and after else 0
     return {"ok": True, "freed": freed, "processes": trimmed}
+
+
+def is_laptop() -> bool:
+    """Czy komputer ma baterię (laptop/tablet)."""
+    if not IS_WINDOWS:
+        return False
+
+    class _SPS(ctypes.Structure):
+        _fields_ = [("AC", ctypes.c_ubyte), ("Flag", ctypes.c_ubyte), ("Pct", ctypes.c_ubyte), ("Sav", ctypes.c_ubyte),
+                    ("Life", ctypes.c_ulong), ("Full", ctypes.c_ulong)]
+    try:
+        st = _SPS()
+        return bool(ctypes.windll.kernel32.GetSystemPowerStatus(ctypes.byref(st))) and st.Flag != 128
+    except Exception:
+        return False
 
 
 # --------------------------------------------------------------------------- sieć

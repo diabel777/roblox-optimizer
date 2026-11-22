@@ -132,7 +132,32 @@ class ControllersPage(Page):
             w.label(rw, txt, "body", c.text, width=190).pack(side="left")
             _slider(rw, var).pack(side="left", padx=8)
         self.led = tk.BooleanVar(value=self.cfg["mic_led"])
+        self.keep = tk.BooleanVar(value=self.cfg["keep"])
+        self.auto_trig = tk.BooleanVar(value=self.cfg["auto_triggers"])
         w.switch(ac, "Dioda wyciszenia mikrofonu świeci", variable=self.led).pack(anchor="w", padx=22, pady=(8, 16))
+
+        kc = w.card(body)
+        kc.pack(fill="x", pady=(14, 0))
+        w.label(kc, "Automatyka", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 6))
+        w.switch(kc, "Pilnuj koloru - przywracaj go, gdy coś go zmieni", variable=self.keep).pack(anchor="w", padx=22, pady=4)
+        w.label(kc, "Pasek pada wraca do domyślnego po usypieniu Bluetooth albo gdy ustawi go inny program. Aplikacja odświeża kolor co kilka sekund, "
+                "nie rusząc wibracji w grach ani głośności.", "small", c.muted, wraplength=700).pack(fill="x", padx=60)
+        w.switch(kc, "Automatyczna siła spustów zależnie od gry", variable=self.auto_trig).pack(anchor="w", padx=22, pady=(10, 4))
+        w.label(kc, "Gdy działa gra wyścigowa (np. Forza, Motor Town, ETS2): lewy spust jak hamulec, prawy lekki jak gaz. W strzelankach: "
+                "prawy jak spust broni. Po zamknięciu gry wracają Twoje ustawienia. Tylko DualSense (PS5).", "small", c.muted,
+                wraplength=700).pack(fill="x", padx=60, pady=(0, 16))
+
+        gc = w.card(body)
+        gc.pack(fill="x", pady=(14, 0))
+        w.label(gc, "Pad jako normalny pad do gier", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 2))
+        w.label(gc, "Wiele gier na PC rozumie tylko pady Xbox, więc pad PlayStation ma „losowe” przyciski. Rozwiązanie: program, który "
+                "udaje dla gier pad Xbox. Zainstaluję oficjalny DS4Windows z winget (potrzebuje zgody administratora), po czym "
+                "uruchom go i podłącz pad. W Steam wystarczy włączyć Ustawienia → Kontroler → obsługa PlayStation.",
+                "small", c.muted, wraplength=700).pack(fill="x", padx=22)
+        gr = ctk.CTkFrame(gc, fg_color="transparent", height=1)
+        gr.pack(fill="x", padx=22, pady=(10, 16))
+        w.button(gr, "Zainstaluj DS4Windows", self.install_ds4w, "primary", height=36, width=210).pack(side="left")
+        w.button(gr, "Kalibracja pada w Windows", self.open_joy, "ghost", height=36, width=220).pack(side="left", padx=8)
 
         bar = ctk.CTkFrame(body, fg_color="transparent", height=1)
         bar.pack(fill="x", pady=(14, 20))
@@ -152,6 +177,7 @@ class ControllersPage(Page):
             "trigger_left": self.tl.get(), "trigger_right": self.tr.get(),
             "trigger_force": self.tf.get(), "trigger_start": self.ts.get(),
             "headphone": self.hp.get(), "speaker": self.sp.get(), "mic": self.mc.get(), "mic_led": self.led.get(),
+            "keep": self.keep.get(), "auto_triggers": self.auto_trig.get(),
         }
         return gp.sanitize(cfg)
 
@@ -188,6 +214,8 @@ class ControllersPage(Page):
             return
         cfg = self._collect()
         self.app.settings.set("pad", cfg)
+        if not getattr(self.app, "pad_keeper", None):
+            self.app._start_pad_keeper()
         ok, msg = gp.apply(pad, cfg)
         self.app.toast.show(msg, "ok" if ok else "err")
 
@@ -286,6 +314,20 @@ class ControllersPage(Page):
             with open(path, "w", encoding="utf-8") as f:
                 f.write(wh.to_text(self._profile()))
             self.app.toast.show("Zapisano plik.", "ok")
+
+    def install_ds4w(self) -> None:
+        from ... import drivers
+        if not drivers.have_winget():
+            self.app.toast.show("Brak winget (Instalator aplikacji) - pobierz DS4Windows ze strony ds4-windows.com.", "warn", 6000)
+            return
+        if not w.confirm(self, "DS4Windows", "Zainstalować DS4Windows (oficjalny pakiet z winget)? Windows może zapytać o zgodę administratora.", "Zainstaluj"):
+            return
+        self.app.toast.show("Instaluję DS4Windows…", "info")
+
+        def run():
+            ok, msg = drivers.winget_install("Ryochan7.DS4Windows")
+            self.after(0, lambda: self.app.toast.show("Zainstalowano DS4Windows. Uruchom go z menu Start." if ok else msg, "ok" if ok else "err", 6000))
+        threading.Thread(target=run, daemon=True).start()
 
     def open_joy(self) -> None:
         import os

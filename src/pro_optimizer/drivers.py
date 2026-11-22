@@ -172,6 +172,26 @@ def winget_upgrade_all() -> tuple[bool, str]:
     return False, "winget zakończył się kodem %d - część programów mogła nie zostać zaktualizowana." % r.returncode
 
 
+WINGET_ALLOWED = {"Ryochan7.DS4Windows"}      # tylko pakiety, które aplikacja sama proponuje
+
+
+def winget_install(pkg_id: str) -> tuple[bool, str]:
+    if pkg_id not in WINGET_ALLOWED:
+        return False, "Ten pakiet nie jest dozwolony."
+    exe = _winget_path()
+    if not exe:
+        return False, "Nie znaleziono winget (Instalator aplikacji)."
+    try:
+        r = subprocess.run([exe, "install", "--id", pkg_id, "--exact", "--silent", "--accept-package-agreements",
+                            "--accept-source-agreements", "--disable-interactivity"],
+                           capture_output=True, text=True, errors="ignore", timeout=900, creationflags=0x08000000)
+    except Exception as e:  # noqa: BLE001
+        return False, str(e)
+    if r.returncode == 0 or "already installed" in (r.stdout or "").lower():
+        return True, "Zainstalowano."
+    return False, "Instalacja nie powiodła się (kod %d)." % r.returncode
+
+
 def gpu_vendor(name: str) -> str:
     n = (name or "").lower()
     if "nvidia" in n or "geforce" in n:

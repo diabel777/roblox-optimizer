@@ -35,6 +35,7 @@ DEFAULTS: dict[str, Any] = {
     "rumble_left": 100, "rumble_right": 100,        # siła wibracji (test), % - wartość do jednorazowego pulsu
     "trigger_left": "off", "trigger_right": "off", "trigger_force": 60, "trigger_start": 30,
     "headphone": 70, "speaker": 70, "mic": 70, "mic_led": False,
+    "keep": True, "auto_triggers": True,
 }
 
 
@@ -59,6 +60,8 @@ def sanitize(cfg: Optional[dict]) -> dict:
     for k in ("trigger_left", "trigger_right"):
         out[k] = src.get(k) if src.get(k) in TRIGGER_MODES else "off"
     out["mic_led"] = bool(src.get("mic_led", False))
+    out["keep"] = bool(src.get("keep", True))
+    out["auto_triggers"] = bool(src.get("auto_triggers", True))
     return out
 
 
@@ -87,11 +90,25 @@ def _trigger_bytes(mode: str, start: int, force: int) -> bytes:
     return bytes(11)
 
 
-def build_dualsense(cfg: dict, bluetooth: bool = False, seq: int = 0) -> bytes:
+def build_dualsense(cfg: dict, bluetooth: bool = False, seq: int = 0, mode: str = "apply") -> bytes:
+    """mode: "apply" (kolor+spusty+dźwięk), "keep" (tylko kolor i spusty włączone przez użytkownika - nie rusza wibracji
+    gier ani głośności), "rumble" (jak apply, ale z wibracją - do testu)."""
+    trig = cfg.get("_trig") if isinstance(cfg, dict) else None
     cfg = sanitize(cfg)
+    if trig:
+        cfg["_trig"] = trig
     c = bytearray(47)
     # valid_flag0: 0 wibracje, 2 spust prawy, 3 spust lewy, 4 słuchawki, 5 głośnik, 6 mikrofon, 7 sterowanie audio
-    c[0] = 0b11111101
+    f0 = 0
+    if mode == "rumble":
+        f0 |= 0b00000001
+    if mode != "keep" or cfg["trigger_right"] != "off":
+        f0 |= 0b00000100
+    if mode != "keep" or cfg["trigger_left"] != "off":
+        f0 |= 0b00001000
+    if mode != "keep":
+        f0 |= 0b11110000
+    c[0] = f0
     # valid_flag1: 0 dioda mikrofonu, 2 pasek świetlny
     c[1] = 0b00000101
     c[2] = _scale255(cfg["rumble_right"])
@@ -101,8 +118,11 @@ def build_dualsense(cfg: dict, bluetooth: bool = False, seq: int = 0) -> bytes:
     c[6] = _scale255(cfg["mic"])
     c[7] = 0x10 if cfg["mic"] else 0x00
     c[8] = 1 if cfg["mic_led"] else 0
-    c[10:21] = _trigger_bytes(cfg["trigger_right"], cfg["trigger_start"], cfg["trigger_force"])
-    c[21:32] = _trigger_bytes(cfg["trigger_left"], cfg["trigger_start"], cfg["trigger_force"])
+    tr = cfg.get("_trig") or {}
+    rs, rf = tr.get("right", (cfg["trigger_start"], cfg["trigger_force"]))
+    ls, lf = tr.get("left", (cfg["trigger_start"], cfg["trigger_force"]))
+    c[10:21] = _trigger_bytes(cfg["trigger_right"], rs, rf)
+    c[21:32] = _trigger_bytes(cfg["trigger_left"], ls, lf)
     c[38] = 0b00000010     # valid_flag2: ustawienie paska świetlnego
     c[41] = 0x02
     c[42] = 0x00           # jasność diod gracza (0 = maks.)
@@ -113,18 +133,18 @@ def build_dualsense(cfg: dict, bluetooth: bool = False, seq: int = 0) -> bytes:
     return body + _crc_bt(body)                              # raport 0x31, 78 bajtów
 
 
-def build_dualshock4(cfg: dict, bluetooth: bool = False) -> bytes:
+def build_dualshock4(cfg: dict, bluetooth: bool = False, mode: str = "apply") -> bytes:
     cfg = sanitize(cfg)
     r, g, b = _rgb(cfg)
     weak, strong = _scale255(cfg["rumble_right"]), _scale255(cfg["rumble_left"])
     if not bluetooth:
         rep = bytearray(32)
-        rep[0], rep[1] = 0x05, 0xFF
+        rep[0], rep[1] = 0x05, (0x07 if mode == "rumble" else 0x06)
         rep[4], rep[5] = weak, strong
         rep[6:9] = bytes((r, g, b))
         return bytes(rep)
     rep = bytearray(78)
-    rep[0], rep[1], rep[3] = 0x11, 0xC0, 0x07
+    rep[0], rep[1], rep[3] = 0x11, 0xC0, (0x07 if mode == "rumble" else 0x06)
     rep[6], rep[7] = weak, strong
     rep[8:11] = bytes((r, g, b))
     return bytes(rep[:74]) + _crc_bt(bytes(rep[:74]))
@@ -177,14 +197,18 @@ def detect() -> list[Pad]:
     return pads
 
 
-def apply(pad: Pad, cfg: dict, seq: int = 0, rumble: bool = False) -> tuple[bool, str]:
+def apply(pad: Pad, cfg: dict, seq: int = 0, rumble: bool = False, mode: str = "") -> tuple[bool, str]:
     hid = _hid()
     if not hid:
         return False, "Brak biblioteki HID - zainstaluj wersję aplikacji z obsługą padów."
+    trig = cfg.get("_trig") if isinstance(cfg, dict) else None
     cfg = sanitize(cfg)
+    if trig:
+        cfg["_trig"] = trig
     if not rumble:            # zwykłe zastosowanie nie ma wibrować - wibracje tylko w teście
         cfg = dict(cfg, rumble_left=0, rumble_right=0)
-    report = (build_dualsense(cfg, pad.bluetooth, seq) if pad.is_dualsense else build_dualshock4(cfg, pad.bluetooth))
+    mode = mode or ("rumble" if rumble else "apply")
+    report = (build_dualsense(cfg, pad.bluetooth, seq, mode) if pad.is_dualsense else build_dualshock4(cfg, pad.bluetooth, mode))
     try:
         dev = hid.device()
         dev.open_path(pad.path)
@@ -207,3 +231,65 @@ def pulse(pad: Pad, cfg: dict) -> tuple[bool, str]:
     time.sleep(0.6)
     off = dict(sanitize(cfg), rumble_left=0, rumble_right=0)
     return apply(pad, off)
+
+
+# --------------------------------------------------------------------------- automatyczna siła spustów wg gry
+RACING = {"forza5", "forza4", "ets2", "ats", "ac", "acc", "beamng", "nfsunbound", "crew", "motortown"}
+SHOOTER = {"cs2", "valorant", "warzone", "cod", "apex", "r6", "fortnite", "pubg", "tarkov", "bf2042", "overwatch2", "marvelrivals",
+           "tf2", "l4d2", "helldivers2", "deltaforce", "r6x", "deadlock"}
+
+
+def trigger_overrides(game_ids) -> dict:
+    """Wyścigi: lewy spust (hamulec) twardy, prawy (gaz) lekki z oporem. Strzelanki: prawy jak spust broni. Inaczej: bez zmian."""
+    ids = set(game_ids or ())
+    if ids & RACING:
+        return {"trigger_left": "rigid", "trigger_right": "rigid", "_l": (15, 75), "_r": (10, 30)}
+    if ids & SHOOTER:
+        return {"trigger_left": "rigid", "trigger_right": "section", "_l": (20, 35), "_r": (30, 70)}
+    return {}
+
+
+def effective_config(cfg: dict, game_ids) -> dict:
+    cfg = sanitize(cfg)
+    if not cfg["auto_triggers"]:
+        return cfg
+    ov = trigger_overrides(game_ids)
+    if not ov:
+        return cfg
+    out = dict(cfg)
+    out["trigger_left"], out["trigger_right"] = ov["trigger_left"], ov["trigger_right"]
+    out["_trig"] = {"left": ov["_l"], "right": ov["_r"]}
+    return out
+
+
+class Keeper:
+    """Wątek, który co kilka sekund odświeża kolor i spusty - pasek świetlny pada wraca do domyślnego, gdy cokolwiek
+    (Steam, gra, usypianie Bluetooth) go przestawi. Nie dotyka wibracji gier ani głośności."""
+
+    def __init__(self, get_cfg, get_games, interval: float = 3.0):
+        import threading
+        self._get_cfg, self._get_games, self.interval = get_cfg, get_games, interval
+        self._stop = threading.Event()
+        self._t = threading.Thread(target=self._run, daemon=True)
+        self.last_error = ""
+
+    def start(self) -> None:
+        if not self._t.is_alive():
+            self._t.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+
+    def _run(self) -> None:
+        seq = 0
+        while not self._stop.wait(self.interval):
+            try:
+                cfg = sanitize(self._get_cfg())
+                if not cfg["keep"] or not available():
+                    continue
+                eff = effective_config(cfg, self._get_games())
+                for pad in detect():
+                    seq = (seq + 1) & 0x0F
+                    apply(pad, eff, seq, mode="keep")
+            except Exception:
+                log.debug("Keeper: błąd odświeżania pada", exc_info=True)

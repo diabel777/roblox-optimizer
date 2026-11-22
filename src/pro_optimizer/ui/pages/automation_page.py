@@ -26,12 +26,13 @@ ROWS = [
     ("clean", "Automatyczne czyszczenie cache", "Czyści cache aplikacji zaznaczonych domyślnie na stronie Czyszczenie (uruchomione aplikacje są pomijane)."),
     ("tweaks", "Automatyczna optymalizacja Windows", "Pilnuje, żeby plan zasilania, tryb gry i wyłączone nagrywanie w tle nie wróciły do ustawień Windows."),
     ("defender", "Automatyczna aktualizacja antywirusa", "Pobiera najnowsze definicje Microsoft Defendera."),
+    ("app_opt", "Optymalizacja aplikacji w tle", "Gdy działa gra, przeglądarki, Discord, Spotify i launchery dostają niższy priorytet, a po grze wracają do normy. Niczego nie zamyka."),
     ("game_boost", "Automatyczny doping gier", "Gdy wykryta gra się uruchomi: podnosi jej priorytet i zwalnia pamięć. Szczegóły ustawisz w każdej grze osobno."),
 ]
 
 
 class AutomationPage(Page):
-    title = "Automatyzacja"
+    title = "Działa samo"
     subtitle = "Włącz raz - reszta dzieje się w tle, dopóki aplikacja jest uruchomiona."
 
     def __init__(self, master, app):
@@ -108,7 +109,7 @@ class AutomationPage(Page):
         self._set(key, "enabled", self.vars[key].get())
 
     def enable_recommended(self) -> None:
-        for k in ("ram", "dns", "tweaks", "defender", "game_boost"):
+        for k in ("ram", "dns", "tweaks", "defender", "game_boost", "app_opt"):
             self.vars[k].set(True)
             self._set(k, "enabled", True)
         self.app.toast.show("Włączono zalecane zadania. Czyszczenie cache zostaw wyłączone, jeśli wolisz robić je ręcznie.", "ok", 5500)

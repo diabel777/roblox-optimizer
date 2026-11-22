@@ -12,7 +12,7 @@ from ..theme import c
 
 
 class FanPage(Page):
-    title = "Wentylator i GPU"
+    title = "Wentylatory"
     subtitle = "Inteligentna krzywa dopasowuje obroty do temperatury karty na bieżąco."
 
     def __init__(self, master, app):

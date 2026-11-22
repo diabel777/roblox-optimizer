@@ -23,7 +23,7 @@ BIOS_CHECKLIST = (
 
 
 class DriversPage(Page):
-    title = "Sterowniki i BIOS"
+    title = "Sterowniki"
     subtitle = "Aktualizacje sterowników z Windows Update, sterowniki karty graficznej, programy i informacje o BIOS."
 
     def __init__(self, master, app):

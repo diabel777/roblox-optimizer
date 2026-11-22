@@ -1,18 +1,517 @@
 [
-  {"id": "roblox_player", "name": "Roblox Player", "kind": "roblox_player", "exes": ["RobloxPlayerBeta.exe"],
-   "desc": "Gra Roblox. Dodatkowo profile FastFlag i limit FPS."},
-  {"id": "roblox_studio", "name": "Roblox Studio", "kind": "roblox_studio", "exes": ["RobloxStudioBeta.exe"],
-   "desc": "Edytor Roblox. Dodatkowo profile FastFlag."},
-  {"id": "cs2", "name": "Counter-Strike 2", "exes": ["cs2.exe"], "hints": ["Counter-Strike Global Offensive"]},
-  {"id": "fortnite", "name": "Fortnite", "exes": ["FortniteClient-Win64-Shipping.exe"], "hints": ["Fortnite"]},
-  {"id": "valorant", "name": "Valorant", "exes": ["VALORANT-Win64-Shipping.exe"], "hints": ["VALORANT", "Riot Games"]},
-  {"id": "minecraft", "name": "Minecraft (Java)", "exes": ["javaw.exe"], "hints": ["Minecraft", ".minecraft"], "no_priority_ifeo": true},
-  {"id": "gta5", "name": "Grand Theft Auto V", "exes": ["GTA5.exe", "GTA5_Enhanced.exe"], "hints": ["Grand Theft Auto V"]},
-  {"id": "fivem", "name": "FiveM", "exes": ["FiveM.exe"], "hints": ["FiveM"]},
-  {"id": "cyberpunk", "name": "Cyberpunk 2077", "exes": ["Cyberpunk2077.exe"], "hints": ["Cyberpunk 2077"]},
-  {"id": "warzone", "name": "Call of Duty: Warzone", "exes": ["cod.exe", "ModernWarfare.exe"], "hints": ["Call of Duty"]},
-  {"id": "apex", "name": "Apex Legends", "exes": ["r5apex.exe", "r5apex_dx12.exe"], "hints": ["Apex"]},
-  {"id": "rust", "name": "Rust", "exes": ["RustClient.exe"], "hints": ["Rust"]},
-  {"id": "forza5", "name": "Forza Horizon 5", "exes": ["ForzaHorizon5.exe"], "hints": ["Forza Horizon 5"]},
-  {"id": "ets2", "name": "Euro Truck Simulator 2", "exes": ["eurotrucks2.exe"], "hints": ["Euro Truck Simulator 2"]}
+ {
+  "id": "roblox_player",
+  "name": "Roblox Player",
+  "kind": "roblox_player",
+  "exes": [
+   "RobloxPlayerBeta.exe"
+  ],
+  "desc": "Gra Roblox. Dodatkowo profile FastFlag i limit FPS."
+ },
+ {
+  "id": "roblox_studio",
+  "name": "Roblox Studio",
+  "kind": "roblox_studio",
+  "exes": [
+   "RobloxStudioBeta.exe"
+  ],
+  "desc": "Edytor Roblox. Dodatkowo profile FastFlag."
+ },
+ {
+  "id": "cs2",
+  "name": "Counter-Strike 2",
+  "exes": [
+   "cs2.exe"
+  ],
+  "hints": [
+   "Counter-Strike Global Offensive"
+  ]
+ },
+ {
+  "id": "fortnite",
+  "name": "Fortnite",
+  "exes": [
+   "FortniteClient-Win64-Shipping.exe"
+  ],
+  "hints": [
+   "Fortnite"
+  ]
+ },
+ {
+  "id": "valorant",
+  "name": "Valorant",
+  "exes": [
+   "VALORANT-Win64-Shipping.exe"
+  ],
+  "hints": [
+   "VALORANT",
+   "Riot Games"
+  ]
+ },
+ {
+  "id": "minecraft",
+  "name": "Minecraft (Java)",
+  "exes": [
+   "javaw.exe"
+  ],
+  "hints": [
+   "Minecraft",
+   ".minecraft"
+  ],
+  "no_priority_ifeo": true
+ },
+ {
+  "id": "gta5",
+  "name": "Grand Theft Auto V",
+  "exes": [
+   "GTA5.exe",
+   "GTA5_Enhanced.exe"
+  ],
+  "hints": [
+   "Grand Theft Auto V"
+  ]
+ },
+ {
+  "id": "fivem",
+  "name": "FiveM",
+  "exes": [
+   "FiveM.exe"
+  ],
+  "hints": [
+   "FiveM"
+  ]
+ },
+ {
+  "id": "cyberpunk",
+  "name": "Cyberpunk 2077",
+  "exes": [
+   "Cyberpunk2077.exe"
+  ],
+  "hints": [
+   "Cyberpunk 2077"
+  ]
+ },
+ {
+  "id": "warzone",
+  "name": "Call of Duty: Warzone",
+  "exes": [
+   "cod.exe",
+   "ModernWarfare.exe"
+  ],
+  "hints": [
+   "Call of Duty"
+  ]
+ },
+ {
+  "id": "apex",
+  "name": "Apex Legends",
+  "exes": [
+   "r5apex.exe",
+   "r5apex_dx12.exe"
+  ],
+  "hints": [
+   "Apex"
+  ]
+ },
+ {
+  "id": "rust",
+  "name": "Rust",
+  "exes": [
+   "RustClient.exe"
+  ],
+  "hints": [
+   "Rust"
+  ]
+ },
+ {
+  "id": "forza5",
+  "name": "Forza Horizon 5",
+  "exes": [
+   "ForzaHorizon5.exe"
+  ],
+  "hints": [
+   "Forza Horizon 5"
+  ]
+ },
+ {
+  "id": "ets2",
+  "name": "Euro Truck Simulator 2",
+  "exes": [
+   "eurotrucks2.exe"
+  ],
+  "hints": [
+   "Euro Truck Simulator 2"
+  ]
+ },
+ {
+  "id": "motortown",
+  "name": "Motor Town: Behind The Wheel",
+  "exes": [
+   "MotorTown-Win64-Shipping.exe"
+  ],
+  "hints": [
+   "Motor Town"
+  ]
+ },
+ {
+  "id": "forza4",
+  "name": "Forza Horizon 4",
+  "exes": [
+   "ForzaHorizon4.exe"
+  ],
+  "hints": [
+   "Forza Horizon 4"
+  ]
+ },
+ {
+  "id": "lol",
+  "name": "League of Legends",
+  "exes": [
+   "League of Legends.exe"
+  ]
+ },
+ {
+  "id": "dota2",
+  "name": "Dota 2",
+  "exes": [
+   "dota2.exe"
+  ]
+ },
+ {
+  "id": "rocketleague",
+  "name": "Rocket League",
+  "exes": [
+   "RocketLeague.exe"
+  ]
+ },
+ {
+  "id": "overwatch2",
+  "name": "Overwatch 2",
+  "exes": [
+   "Overwatch.exe"
+  ]
+ },
+ {
+  "id": "r6",
+  "name": "Rainbow Six Siege",
+  "exes": [
+   "RainbowSix.exe",
+   "RainbowSix_Vulkan.exe"
+  ]
+ },
+ {
+  "id": "pubg",
+  "name": "PUBG: Battlegrounds",
+  "exes": [
+   "TslGame.exe"
+  ]
+ },
+ {
+  "id": "tarkov",
+  "name": "Escape from Tarkov",
+  "exes": [
+   "EscapeFromTarkov.exe"
+  ]
+ },
+ {
+  "id": "eldenring",
+  "name": "Elden Ring",
+  "exes": [
+   "eldenring.exe"
+  ]
+ },
+ {
+  "id": "bg3",
+  "name": "Baldur's Gate 3",
+  "exes": [
+   "bg3.exe",
+   "bg3_dx11.exe"
+  ]
+ },
+ {
+  "id": "rdr2",
+  "name": "Red Dead Redemption 2",
+  "exes": [
+   "RDR2.exe"
+  ]
+ },
+ {
+  "id": "witcher3",
+  "name": "The Witcher 3",
+  "exes": [
+   "witcher3.exe"
+  ]
+ },
+ {
+  "id": "hogwarts",
+  "name": "Hogwarts Legacy",
+  "exes": [
+   "HogwartsLegacy.exe"
+  ]
+ },
+ {
+  "id": "palworld",
+  "name": "Palworld",
+  "exes": [
+   "Palworld-Win64-Shipping.exe"
+  ]
+ },
+ {
+  "id": "helldivers2",
+  "name": "Helldivers 2",
+  "exes": [
+   "helldivers2.exe"
+  ]
+ },
+ {
+  "id": "marvelrivals",
+  "name": "Marvel Rivals",
+  "exes": [
+   "Marvel-Win64-Shipping.exe"
+  ]
+ },
+ {
+  "id": "bf2042",
+  "name": "Battlefield 2042",
+  "exes": [
+   "BF2042.exe"
+  ]
+ },
+ {
+  "id": "cod",
+  "name": "Call of Duty (Modern Warfare / Black Ops)",
+  "exes": [
+   "cod.exe",
+   "BlackOpsColdWar.exe"
+  ]
+ },
+ {
+  "id": "lethal",
+  "name": "Lethal Company",
+  "exes": [
+   "Lethal Company.exe"
+  ]
+ },
+ {
+  "id": "valheim",
+  "name": "Valheim",
+  "exes": [
+   "valheim.exe"
+  ]
+ },
+ {
+  "id": "terraria",
+  "name": "Terraria",
+  "exes": [
+   "Terraria.exe"
+  ]
+ },
+ {
+  "id": "stardew",
+  "name": "Stardew Valley",
+  "exes": [
+   "Stardew Valley.exe"
+  ]
+ },
+ {
+  "id": "amongus",
+  "name": "Among Us",
+  "exes": [
+   "Among Us.exe"
+  ]
+ },
+ {
+  "id": "genshin",
+  "name": "Genshin Impact",
+  "exes": [
+   "GenshinImpact.exe"
+  ]
+ },
+ {
+  "id": "ats",
+  "name": "American Truck Simulator",
+  "exes": [
+   "amtrucks.exe"
+  ]
+ },
+ {
+  "id": "ac",
+  "name": "Assetto Corsa",
+  "exes": [
+   "acs.exe"
+  ]
+ },
+ {
+  "id": "acc",
+  "name": "Assetto Corsa Competizione",
+  "exes": [
+   "AC2-Win64-Shipping.exe"
+  ]
+ },
+ {
+  "id": "beamng",
+  "name": "BeamNG.drive",
+  "exes": [
+   "BeamNG.drive.x64.exe"
+  ]
+ },
+ {
+  "id": "nfsunbound",
+  "name": "Need for Speed Unbound",
+  "exes": [
+   "NeedForSpeedUnbound.exe"
+  ]
+ },
+ {
+  "id": "crew",
+  "name": "The Crew Motorfest",
+  "exes": [
+   "TheCrewMotorfest.exe"
+  ]
+ },
+ {
+  "id": "wukong",
+  "name": "Black Myth: Wukong",
+  "exes": [
+   "b1-Win64-Shipping.exe"
+  ]
+ },
+ {
+  "id": "diablo4",
+  "name": "Diablo IV",
+  "exes": [
+   "Diablo IV.exe"
+  ]
+ },
+ {
+  "id": "wow",
+  "name": "World of Warcraft",
+  "exes": [
+   "Wow.exe"
+  ]
+ },
+ {
+  "id": "warframe",
+  "name": "Warframe",
+  "exes": [
+   "Warframe.x64.exe"
+  ]
+ },
+ {
+  "id": "dbd",
+  "name": "Dead by Daylight",
+  "exes": [
+   "DeadByDaylight-Win64-Shipping.exe"
+  ]
+ },
+ {
+  "id": "phasmo",
+  "name": "Phasmophobia",
+  "exes": [
+   "Phasmophobia.exe"
+  ]
+ },
+ {
+  "id": "arma3",
+  "name": "Arma 3",
+  "exes": [
+   "arma3_x64.exe"
+  ]
+ },
+ {
+  "id": "dayz",
+  "name": "DayZ",
+  "exes": [
+   "DayZ_x64.exe"
+  ]
+ },
+ {
+  "id": "mcbedrock",
+  "name": "Minecraft (Bedrock)",
+  "exes": [
+   "Minecraft.Windows.exe"
+  ]
+ },
+ {
+  "id": "fallguys",
+  "name": "Fall Guys",
+  "exes": [
+   "FallGuys_client_game.exe"
+  ]
+ },
+ {
+  "id": "tf2",
+  "name": "Team Fortress 2",
+  "exes": [
+   "tf_win64.exe"
+  ]
+ },
+ {
+  "id": "l4d2",
+  "name": "Left 4 Dead 2",
+  "exes": [
+   "left4dead2.exe"
+  ]
+ },
+ {
+  "id": "fc25",
+  "name": "EA Sports FC",
+  "exes": [
+   "FC25.exe",
+   "FC26.exe",
+   "FC24.exe"
+  ]
+ },
+ {
+  "id": "nba2k",
+  "name": "NBA 2K",
+  "exes": [
+   "NBA2K25.exe",
+   "NBA2K24.exe",
+   "NBA2K26.exe"
+  ]
+ },
+ {
+  "id": "gta5e",
+  "name": "GTA V Enhanced",
+  "exes": [
+   "GTA5_Enhanced.exe"
+  ]
+ },
+ {
+  "id": "lol_valorant_riot",
+  "name": "Teamfight Tactics",
+  "exes": [
+   "TeamfightTactics.exe"
+  ]
+ },
+ {
+  "id": "sims4",
+  "name": "The Sims 4",
+  "exes": [
+   "TS4_x64.exe"
+  ]
+ },
+ {
+  "id": "satisfactory",
+  "name": "Satisfactory",
+  "exes": [
+   "FactoryGame-Win64-Shipping-Cloud.exe",
+   "FactoryGame-Win64-Shipping.exe"
+  ]
+ },
+ {
+  "id": "deadlock",
+  "name": "Deadlock",
+  "exes": [
+   "project8.exe"
+  ]
+ },
+ {
+  "id": "r6x",
+  "name": "Delta Force",
+  "exes": [
+   "DeltaForceClient-Win64-Shipping.exe"
+  ]
+ }
 ]

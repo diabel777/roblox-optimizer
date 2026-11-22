@@ -16,7 +16,13 @@ from ..theme import c, font
 
 
 class SettingsPage(Page):
-    title = "Ustawienia i aktualizacje"
+    def _integrity_text(self) -> str:
+        r = getattr(self.app, "integrity_result", None)
+        if r is None:
+            return "sprawdzane przy starcie (podpisana lista plików)"
+        return f"w porządku - {r['checked']} plików zgodnych z podpisem" if r.get("ok") else "ZMIENIONE - " + r.get("reason", "")
+
+    title = "Ustawienia"
     subtitle = "Aktualizacje działają w tle, jak w Discordzie - nic nie musisz ustawiać."
 
     def __init__(self, master, app):
@@ -68,7 +74,8 @@ class SettingsPage(Page):
             ("Podpis aktualizacji (Ed25519)", "aktywny - przyjmowane są tylko aktualizacje podpisane Twoim kluczem" if key_ok
              else "NIEAKTYWNY - brak klucza, aktualizacje są odrzucane", c.success if key_ok else c.danger),
             ("Weryfikacja paczki", "SHA-256 z podpisanego manifestu, odporność na zip-slip i zip-bomby", c.text),
-            ("Zaufane hosty", ", ".join(sorted(DEFAULT_HOSTS)) + " (tylko HTTPS, także po przekierowaniach)", c.text),
+            ("Pliki aplikacji", self._integrity_text(), c.text),
+            ("Serwer aktualizacji", "zaufany, połączenie szyfrowane (HTTPS); inne adresy są odrzucane", c.text),
             ("Uprawnienia", "aplikacja działa bez administratora; UAC tylko na żądanie dla wybranych funkcji", c.text),
             ("Wycofanie wadliwej wersji", "launcher automatycznie uruchamia poprzednią wersję, jeśli nowa się wywala", c.text),
             ("Instalacja", str(paths.install_root()), c.muted),

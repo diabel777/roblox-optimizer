@@ -83,6 +83,13 @@ def cmd_package(a) -> None:
         die("Klucz publiczny wkompilowany w aplikację (update_key.py) NIE pasuje do klucza podpisu.\n"
             "Użytkownicy odrzuciliby tę aktualizację. Zbuduj aplikację ponownie po 'keygen'.")
 
+    from pro_optimizer import integrity
+    (dist / integrity.FILE).write_text(json.dumps(integrity.build(dist, sk), indent=1) + "\n", encoding="utf-8")
+    chk = integrity.verify(dist, pk)
+    if not chk["ok"]:
+        die(f"Autotest integralności nie przeszedł: {chk['reason']}")
+    print(f"Integralność: {chk['checked']} plików podpisanych")
+
     out = Path(a.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     ver = a.version or VERSION

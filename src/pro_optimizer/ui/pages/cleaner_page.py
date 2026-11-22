@@ -13,7 +13,7 @@ from ..theme import c
 
 
 class CleanerPage(Page):
-    title = "Czyszczenie aplikacji"
+    title = "Czyszczenie"
     subtitle = "Zobacz, ile miejsca zajmuje cache każdej aplikacji i wyczyść tylko to, co chcesz."
 
     def __init__(self, master, app):

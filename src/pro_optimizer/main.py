@@ -40,9 +40,29 @@ def acquire_single_instance(wait: float = 0.0) -> bool:
         time.sleep(0.25)
 
 
+def _drop_admin() -> bool:
+    """Aplikacja ma działać jako zwykły użytkownik. Jeśli wystartowała z uprawnieniami admina, a nikt o to nie prosił
+    (brak --elevated), uruchamiamy ją ponownie przez Eksploratora (bez podniesienia) i kończymy tę instancję."""
+    if os.name != "nt" or not getattr(sys, "frozen", False) or "--elevated" in sys.argv:
+        return False
+    try:
+        from . import winsys
+        from .ps import system_exe
+        if not winsys.is_admin():
+            return False
+        import subprocess
+        subprocess.Popen([system_exe("explorer"), sys.executable], close_fds=True)
+        return True
+    except Exception:
+        return False
+
+
 def main() -> int:
     paths.ensure_dirs()
     setup_logging()
+    if _drop_admin():
+        logging.getLogger(__name__).info("Start z uprawnieniami admina bez prośby - uruchamiam ponownie jako zwykły użytkownik")
+        return 0
     if not acquire_single_instance(wait=8):
         try:
             ctypes.windll.user32.MessageBoxW(0, f"{APP_NAME} jest już uruchomiony.", APP_NAME, 0x40)

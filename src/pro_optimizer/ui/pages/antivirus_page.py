@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from tkinter import filedialog
 
+import tkinter as tk
+
 import customtkinter as ctk
 
 from ... import defender, winsys
@@ -24,7 +26,7 @@ def _ago(dt) -> str:
 
 
 class AntivirusPage(Page):
-    title = "Antywirus"
+    title = "Ochrona"
     subtitle = "Ochrona przed wirusami oparta o Microsoft Defender - wygodny panel zamiast ukrytych okien Windows."
 
     def __init__(self, master, app):
@@ -73,8 +75,27 @@ class AntivirusPage(Page):
         self.threat_box = ctk.CTkFrame(tc, fg_color="transparent", height=1)
         self.threat_box.pack(fill="x", padx=22, pady=(0, 16))
 
+        hc = w.card(body)
+        hc.grid(row=2, column=0, sticky="ew", pady=(14, 0))
+        top4 = ctk.CTkFrame(hc, fg_color="transparent", height=1)
+        top4.pack(fill="x", padx=22, pady=(18, 2))
+        w.label(top4, "Wzmocnij ochronę", "heading", c.text, "bold").pack(side="left")
+        w.button(top4, "Sprawdź", self.load_harden, "ghost", height=30, width=90).pack(side="right")
+        w.label(hc, "Dodatkowe tarcze Windowsa, które domyślnie bywają wyłączone. Zaznacz i kliknij „Włącz zaznaczone” "
+                    "(wymaga administratora; cofniesz w Zabezpieczeniach Windows).", "small", c.muted, wraplength=720).pack(fill="x", padx=22)
+        self.h_vars = {}
+        self.h_box = ctk.CTkFrame(hc, fg_color="transparent", height=1)
+        self.h_box.pack(fill="x", padx=22, pady=(8, 4))
+        for key, (name, _cmd) in defender.HARDEN_ITEMS.items():
+            v = tk.BooleanVar(value=True)
+            self.h_vars[key] = v
+            w.checkbox(self.h_box, name, variable=v).pack(anchor="w", pady=3)
+        self.h_state = w.label(hc, "", "small", c.muted, wraplength=720)
+        self.h_state.pack(fill="x", padx=22)
+        w.button(hc, "Włącz zaznaczone", self.do_harden, "success", height=36, width=190).pack(anchor="w", padx=22, pady=(8, 16))
+
         ac = w.card(body)
-        ac.grid(row=2, column=0, sticky="ew", pady=(14, 20))
+        ac.grid(row=3, column=0, sticky="ew", pady=(14, 20))
         top3 = ctk.CTkFrame(ac, fg_color="transparent", height=1)
         top3.pack(fill="x", padx=22, pady=(18, 2))
         w.label(top3, "Programy w autostarcie", "heading", c.text, "bold").pack(side="left")
@@ -84,6 +105,30 @@ class AntivirusPage(Page):
         self.audit_box = ctk.CTkFrame(ac, fg_color="transparent", height=1)
         self.audit_box.pack(fill="x", padx=22, pady=(8, 16))
         self._loaded = False
+
+    def load_harden(self) -> None:
+        def done(res):
+            ok, d = res
+            if not ok:
+                self.h_state.configure(text="Nie udało się odczytać stanu tarcz.", text_color=c.muted)
+                return
+            on = [defender.HARDEN_ITEMS[k][0] for k, v in d.items() if v and k in defender.HARDEN_ITEMS]
+            self.h_state.configure(text=f"Już włączone: {len(on)} z {len(defender.HARDEN_ITEMS)}.", text_color=c.muted)
+            for k, v in d.items():
+                if k in self.h_vars:
+                    self.h_vars[k].set(not v)
+        self.app.bg.run(defender.harden_status, done)
+
+    def do_harden(self) -> None:
+        keys = [k for k, v in self.h_vars.items() if v.get()]
+        if not keys:
+            return
+
+        def done(res):
+            self.h_state.configure(text=res[1], text_color=c.success if res[0] else c.warning)
+            if res[0]:
+                self.load_harden()
+        self.app.bg.run(lambda: defender.harden(keys), done)
 
     def on_show(self) -> None:
         if not self._loaded:

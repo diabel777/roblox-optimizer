@@ -13,7 +13,7 @@ from ..theme import c
 
 
 class GamesPage(Page):
-    title = "Optymalizacja gier"
+    title = "Gry"
     subtitle = "Każdą grę ustawiasz osobno - ustawienia jednej nie wpływają na inne."
 
     def __init__(self, master, app):

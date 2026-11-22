@@ -1,97 +1,420 @@
 [
-  {"id": "roblox", "name": "Roblox (Player) – logi i cache", "group": "Roblox", "default": true,
-   "processes": ["RobloxPlayerBeta.exe"],
-   "paths": ["%LOCALAPPDATA%/Roblox/logs", "%LOCALAPPDATA%/Roblox/http", "%LOCALAPPDATA%/Roblox/rbx-storage", "%TEMP%/Roblox"],
-   "note": "Pliki zostaną pobrane ponownie przy następnym uruchomieniu gry. Nie usuwa ustawień ani folderu Versions."},
-  {"id": "roblox_studio", "name": "Roblox Studio – logi i cache", "group": "Roblox", "default": true,
-   "processes": ["RobloxStudioBeta.exe"],
-   "paths": ["%LOCALAPPDATA%/Roblox/logs", "%LOCALAPPDATA%/Roblox/Downloads", "%LOCALAPPDATA%/Roblox/LocalStorage/cache"],
-   "note": "Autozapisy i projekty (Documents\\ROBLOX) NIE są ruszane."},
-
-  {"id": "discord", "name": "Discord", "group": "Komunikatory", "default": true, "processes": ["Discord.exe"],
-   "paths": ["%APPDATA%/discord/Cache", "%APPDATA%/discord/Code Cache", "%APPDATA%/discord/GPUCache",
-             "%APPDATA%/discord/DawnCache", "%APPDATA%/discord/DawnGraphiteCache", "%APPDATA%/discord/DawnWebGPUCache"],
-   "note": "Nie wylogowuje z konta."},
-  {"id": "discord_ptb", "name": "Discord PTB / Canary", "group": "Komunikatory", "default": true,
-   "processes": ["DiscordPTB.exe", "DiscordCanary.exe"],
-   "paths": ["%APPDATA%/discordptb/Cache", "%APPDATA%/discordptb/Code Cache", "%APPDATA%/discordptb/GPUCache",
-             "%APPDATA%/discordcanary/Cache", "%APPDATA%/discordcanary/Code Cache", "%APPDATA%/discordcanary/GPUCache"]},
-  {"id": "telegram", "name": "Telegram Desktop", "group": "Komunikatory", "default": true, "processes": ["Telegram.exe"],
-   "paths": ["%APPDATA%/Telegram Desktop/tdata/user_data/cache", "%APPDATA%/Telegram Desktop/tdata/user_data/media_cache",
-             "%APPDATA%/Telegram Desktop/tdata/dumps"]},
-  {"id": "signal", "name": "Signal", "group": "Komunikatory", "default": true, "processes": ["Signal.exe"],
-   "paths": ["%APPDATA%/Signal/Cache", "%APPDATA%/Signal/Code Cache", "%APPDATA%/Signal/GPUCache"]},
-  {"id": "whatsapp", "name": "WhatsApp Desktop", "group": "Komunikatory", "default": true, "processes": ["WhatsApp.exe"],
-   "paths": ["%APPDATA%/WhatsApp/Cache", "%APPDATA%/WhatsApp/Code Cache", "%APPDATA%/WhatsApp/GPUCache"]},
-  {"id": "teams", "name": "Microsoft Teams (klasyczny)", "group": "Komunikatory", "default": true, "processes": ["Teams.exe"],
-   "paths": ["%APPDATA%/Microsoft/Teams/Cache", "%APPDATA%/Microsoft/Teams/blob_storage", "%APPDATA%/Microsoft/Teams/Code Cache",
-             "%APPDATA%/Microsoft/Teams/GPUCache", "%APPDATA%/Microsoft/Teams/tmp"]},
-  {"id": "slack", "name": "Slack", "group": "Komunikatory", "default": true, "processes": ["slack.exe"],
-   "paths": ["%APPDATA%/Slack/Cache", "%APPDATA%/Slack/Code Cache", "%APPDATA%/Slack/GPUCache", "%APPDATA%/Slack/Service Worker/CacheStorage"]},
-  {"id": "zoom", "name": "Zoom – logi", "group": "Komunikatory", "default": true, "processes": ["Zoom.exe"],
-   "paths": ["%APPDATA%/Zoom/logs"]},
-
-  {"id": "opera", "name": "Opera", "group": "Przeglądarki", "default": true, "processes": ["opera.exe"],
-   "paths": ["%APPDATA%/Opera Software/Opera Stable/Cache", "%APPDATA%/Opera Software/Opera Stable/Code Cache",
-             "%APPDATA%/Opera Software/Opera Stable/GPUCache", "%APPDATA%/Opera Software/Opera Stable/Service Worker/CacheStorage",
-             "%LOCALAPPDATA%/Opera Software/Opera Stable/Cache", "%LOCALAPPDATA%/Opera Software/Opera Stable/Code Cache"],
-   "note": "Historia, hasła, zakładki i sesje zostają nietknięte."},
-  {"id": "opera_gx", "name": "Opera GX", "group": "Przeglądarki", "default": true, "processes": ["opera.exe"],
-   "paths": ["%APPDATA%/Opera Software/Opera GX Stable/Cache", "%APPDATA%/Opera Software/Opera GX Stable/Code Cache",
-             "%APPDATA%/Opera Software/Opera GX Stable/GPUCache", "%APPDATA%/Opera Software/Opera GX Stable/Service Worker/CacheStorage",
-             "%LOCALAPPDATA%/Opera Software/Opera GX Stable/Cache", "%LOCALAPPDATA%/Opera Software/Opera GX Stable/Code Cache"]},
-  {"id": "chrome", "name": "Google Chrome", "group": "Przeglądarki", "default": true, "processes": ["chrome.exe"],
-   "paths": ["%LOCALAPPDATA%/Google/Chrome/User Data/Default/Cache", "%LOCALAPPDATA%/Google/Chrome/User Data/Default/Code Cache",
-             "%LOCALAPPDATA%/Google/Chrome/User Data/Default/GPUCache", "%LOCALAPPDATA%/Google/Chrome/User Data/Default/Service Worker/CacheStorage",
-             "%LOCALAPPDATA%/Google/Chrome/User Data/Profile */Cache", "%LOCALAPPDATA%/Google/Chrome/User Data/Profile */Code Cache",
-             "%LOCALAPPDATA%/Google/Chrome/User Data/Profile */GPUCache", "%LOCALAPPDATA%/Google/Chrome/User Data/ShaderCache",
-             "%LOCALAPPDATA%/Google/Chrome/User Data/GrShaderCache"]},
-  {"id": "edge", "name": "Microsoft Edge", "group": "Przeglądarki", "default": true, "processes": ["msedge.exe"],
-   "paths": ["%LOCALAPPDATA%/Microsoft/Edge/User Data/Default/Cache", "%LOCALAPPDATA%/Microsoft/Edge/User Data/Default/Code Cache",
-             "%LOCALAPPDATA%/Microsoft/Edge/User Data/Default/GPUCache", "%LOCALAPPDATA%/Microsoft/Edge/User Data/Default/Service Worker/CacheStorage",
-             "%LOCALAPPDATA%/Microsoft/Edge/User Data/Profile */Cache", "%LOCALAPPDATA%/Microsoft/Edge/User Data/Profile */Code Cache",
-             "%LOCALAPPDATA%/Microsoft/Edge/User Data/ShaderCache", "%LOCALAPPDATA%/Microsoft/Edge/User Data/GrShaderCache"]},
-  {"id": "brave", "name": "Brave", "group": "Przeglądarki", "default": true, "processes": ["brave.exe"],
-   "paths": ["%LOCALAPPDATA%/BraveSoftware/Brave-Browser/User Data/Default/Cache", "%LOCALAPPDATA%/BraveSoftware/Brave-Browser/User Data/Default/Code Cache",
-             "%LOCALAPPDATA%/BraveSoftware/Brave-Browser/User Data/Default/GPUCache", "%LOCALAPPDATA%/BraveSoftware/Brave-Browser/User Data/ShaderCache"]},
-  {"id": "vivaldi", "name": "Vivaldi", "group": "Przeglądarki", "default": true, "processes": ["vivaldi.exe"],
-   "paths": ["%LOCALAPPDATA%/Vivaldi/User Data/Default/Cache", "%LOCALAPPDATA%/Vivaldi/User Data/Default/Code Cache",
-             "%LOCALAPPDATA%/Vivaldi/User Data/Default/GPUCache", "%LOCALAPPDATA%/Vivaldi/User Data/ShaderCache"]},
-  {"id": "firefox", "name": "Firefox", "group": "Przeglądarki", "default": true, "processes": ["firefox.exe"],
-   "paths": ["%LOCALAPPDATA%/Mozilla/Firefox/Profiles/*/cache2", "%LOCALAPPDATA%/Mozilla/Firefox/Profiles/*/startupCache"]},
-
-  {"id": "steam", "name": "Steam – cache przeglądarki", "group": "Gry i launchery", "default": true, "processes": ["steam.exe", "steamwebhelper.exe"],
-   "paths": ["%LOCALAPPDATA%/Steam/htmlcache"]},
-  {"id": "epic", "name": "Epic Games Launcher", "group": "Gry i launchery", "default": true, "processes": ["EpicGamesLauncher.exe"],
-   "paths": ["%LOCALAPPDATA%/EpicGamesLauncher/Saved/webcache", "%LOCALAPPDATA%/EpicGamesLauncher/Saved/webcache_*", "%LOCALAPPDATA%/EpicGamesLauncher/Saved/Logs"]},
-  {"id": "riot", "name": "Riot Client – tylko logi", "group": "Gry i launchery", "default": true, "processes": ["RiotClientServices.exe"],
-   "paths": ["%LOCALAPPDATA%/Riot Games/Riot Client/Logs"],
-   "note": "Celowo bez folderu Data (v3.x go usuwała) - mógł zawierać sesję logowania."},
-  {"id": "minecraft", "name": "Minecraft – logi i raporty awarii", "group": "Gry i launchery", "default": true, "processes": ["javaw.exe", "Minecraft.exe"],
-   "paths": ["%APPDATA%/.minecraft/logs", "%APPDATA%/.minecraft/crash-reports"]},
-
-  {"id": "spotify", "name": "Spotify", "group": "Muzyka i media", "default": true, "processes": ["Spotify.exe"],
-   "paths": ["%LOCALAPPDATA%/Spotify/Data", "%LOCALAPPDATA%/Spotify/Storage", "%LOCALAPPDATA%/Spotify/Browser",
-             "%LOCALAPPDATA%/Packages/SpotifyAB.SpotifyMusic_*/LocalCache/Spotify/Data"],
-   "note": "Usuwa pobrany cache utworów - offline'owe playlisty trzeba będzie pobrać ponownie."},
-  {"id": "vscode", "name": "Visual Studio Code", "group": "Narzędzia", "default": true, "processes": ["Code.exe"],
-   "paths": ["%APPDATA%/Code/Cache", "%APPDATA%/Code/CachedData", "%APPDATA%/Code/Code Cache", "%APPDATA%/Code/GPUCache", "%APPDATA%/Code/logs"]},
-
-  {"id": "win_temp", "name": "Windows – pliki tymczasowe (TEMP)", "group": "System", "default": true, "processes": [],
-   "paths": ["%TEMP%", "%WINDIR%/Temp"],
-   "note": "Pliki w użyciu są pomijane. Folder %TEMP%/Roblox czyści osobna pozycja Roblox."},
-  {"id": "win_wer", "name": "Windows – raporty błędów i zrzuty awarii", "group": "System", "default": true, "processes": [],
-   "paths": ["%LOCALAPPDATA%/CrashDumps", "%LOCALAPPDATA%/Microsoft/Windows/WER", "%PROGRAMDATA%/Microsoft/Windows/WER/ReportQueue"]},
-  {"id": "win_recent", "name": "Windows – lista ostatnich plików", "group": "System", "default": false, "processes": [],
-   "paths": ["%APPDATA%/Microsoft/Windows/Recent"],
-   "note": "Kwestia prywatności, nie wydajności - domyślnie wyłączone."},
-  {"id": "gpu_nvidia", "name": "NVIDIA – cache shaderów", "group": "Karta graficzna", "default": false, "processes": [],
-   "paths": ["%LOCALAPPDATA%/NVIDIA/DXCache", "%LOCALAPPDATA%/NVIDIA/GLCache", "%PROGRAMDATA%/NVIDIA Corporation/NV_Cache"],
-   "note": "Shadery zbudują się od nowa - pierwsze uruchomienia gier mogą chwilę przycinać. Pomaga przy glitchach po aktualizacji sterownika."},
-  {"id": "gpu_amd", "name": "AMD – cache shaderów", "group": "Karta graficzna", "default": false, "processes": [],
-   "paths": ["%LOCALAPPDATA%/AMD/DxCache", "%LOCALAPPDATA%/AMD/DxcCache", "%LOCALAPPDATA%/AMD/GLCache", "%LOCALAPPDATA%/AMD/VkCache"],
-   "note": "Jak wyżej - pierwsze uruchomienia gier mogą chwilę przycinać."},
-  {"id": "gpu_d3d", "name": "DirectX – cache shaderów (D3DSCache)", "group": "Karta graficzna", "default": false, "processes": [],
-   "paths": ["%LOCALAPPDATA%/D3DSCache"],
-   "note": "Jak wyżej - pierwsze uruchomienia gier mogą chwilę przycinać."}
+ {
+  "id": "roblox",
+  "name": "Roblox (Player) – logi i cache",
+  "group": "Roblox",
+  "default": true,
+  "processes": [
+   "RobloxPlayerBeta.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/Roblox/logs",
+   "%LOCALAPPDATA%/Roblox/http",
+   "%LOCALAPPDATA%/Roblox/rbx-storage",
+   "%TEMP%/Roblox"
+  ],
+  "note": "Pliki zostaną pobrane ponownie przy następnym uruchomieniu gry. Nie usuwa ustawień ani folderu Versions."
+ },
+ {
+  "id": "roblox_studio",
+  "name": "Roblox Studio – logi i cache",
+  "group": "Roblox",
+  "default": true,
+  "processes": [
+   "RobloxStudioBeta.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/Roblox/logs",
+   "%LOCALAPPDATA%/Roblox/Downloads",
+   "%LOCALAPPDATA%/Roblox/LocalStorage/cache"
+  ],
+  "note": "Autozapisy i projekty (Documents\\ROBLOX) NIE są ruszane."
+ },
+ {
+  "id": "discord",
+  "name": "Discord",
+  "group": "Komunikatory",
+  "default": true,
+  "processes": [
+   "Discord.exe"
+  ],
+  "paths": [
+   "%APPDATA%/discord/Cache",
+   "%APPDATA%/discord/Code Cache",
+   "%APPDATA%/discord/GPUCache",
+   "%APPDATA%/discord/DawnCache",
+   "%APPDATA%/discord/DawnGraphiteCache",
+   "%APPDATA%/discord/DawnWebGPUCache"
+  ],
+  "note": "Nie wylogowuje z konta."
+ },
+ {
+  "id": "discord_ptb",
+  "name": "Discord PTB / Canary",
+  "group": "Komunikatory",
+  "default": true,
+  "processes": [
+   "DiscordPTB.exe",
+   "DiscordCanary.exe"
+  ],
+  "paths": [
+   "%APPDATA%/discordptb/Cache",
+   "%APPDATA%/discordptb/Code Cache",
+   "%APPDATA%/discordptb/GPUCache",
+   "%APPDATA%/discordcanary/Cache",
+   "%APPDATA%/discordcanary/Code Cache",
+   "%APPDATA%/discordcanary/GPUCache"
+  ]
+ },
+ {
+  "id": "telegram",
+  "name": "Telegram Desktop",
+  "group": "Komunikatory",
+  "default": true,
+  "processes": [
+   "Telegram.exe"
+  ],
+  "paths": [
+   "%APPDATA%/Telegram Desktop/tdata/user_data/cache",
+   "%APPDATA%/Telegram Desktop/tdata/user_data/media_cache",
+   "%APPDATA%/Telegram Desktop/tdata/dumps"
+  ]
+ },
+ {
+  "id": "signal",
+  "name": "Signal",
+  "group": "Komunikatory",
+  "default": true,
+  "processes": [
+   "Signal.exe"
+  ],
+  "paths": [
+   "%APPDATA%/Signal/Cache",
+   "%APPDATA%/Signal/Code Cache",
+   "%APPDATA%/Signal/GPUCache"
+  ]
+ },
+ {
+  "id": "whatsapp",
+  "name": "WhatsApp Desktop",
+  "group": "Komunikatory",
+  "default": true,
+  "processes": [
+   "WhatsApp.exe"
+  ],
+  "paths": [
+   "%APPDATA%/WhatsApp/Cache",
+   "%APPDATA%/WhatsApp/Code Cache",
+   "%APPDATA%/WhatsApp/GPUCache"
+  ]
+ },
+ {
+  "id": "teams",
+  "name": "Microsoft Teams (klasyczny)",
+  "group": "Komunikatory",
+  "default": true,
+  "processes": [
+   "Teams.exe"
+  ],
+  "paths": [
+   "%APPDATA%/Microsoft/Teams/Cache",
+   "%APPDATA%/Microsoft/Teams/blob_storage",
+   "%APPDATA%/Microsoft/Teams/Code Cache",
+   "%APPDATA%/Microsoft/Teams/GPUCache",
+   "%APPDATA%/Microsoft/Teams/tmp"
+  ]
+ },
+ {
+  "id": "slack",
+  "name": "Slack",
+  "group": "Komunikatory",
+  "default": true,
+  "processes": [
+   "slack.exe"
+  ],
+  "paths": [
+   "%APPDATA%/Slack/Cache",
+   "%APPDATA%/Slack/Code Cache",
+   "%APPDATA%/Slack/GPUCache"
+  ]
+ },
+ {
+  "id": "zoom",
+  "name": "Zoom – logi",
+  "group": "Komunikatory",
+  "default": true,
+  "processes": [
+   "Zoom.exe"
+  ],
+  "paths": [
+   "%APPDATA%/Zoom/logs"
+  ]
+ },
+ {
+  "id": "opera",
+  "name": "Opera",
+  "group": "Przeglądarki",
+  "default": true,
+  "processes": [
+   "opera.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/Opera Software/Opera Stable/Cache",
+   "%LOCALAPPDATA%/Opera Software/Opera Stable/Code Cache"
+  ],
+  "note": "Czyszczone są tylko pliki tymczasowe (Cache i Code Cache). Komunikatory w pasku bocznym, logowania, hasła, historia i ustawienia zostają."
+ },
+ {
+  "id": "opera_gx",
+  "name": "Opera GX",
+  "group": "Przeglądarki",
+  "default": true,
+  "processes": [
+   "opera.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/Opera Software/Opera GX Stable/Cache",
+   "%LOCALAPPDATA%/Opera Software/Opera GX Stable/Code Cache"
+  ],
+  "note": "Czyszczone są tylko pliki tymczasowe (Cache i Code Cache). Komunikatory w pasku bocznym, logowania, hasła, historia i ustawienia zostają."
+ },
+ {
+  "id": "chrome",
+  "name": "Google Chrome",
+  "group": "Przeglądarki",
+  "default": true,
+  "processes": [
+   "chrome.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/Google/Chrome/User Data/Default/Cache",
+   "%LOCALAPPDATA%/Google/Chrome/User Data/Default/Code Cache",
+   "%LOCALAPPDATA%/Google/Chrome/User Data/Default/GPUCache",
+   "%LOCALAPPDATA%/Google/Chrome/User Data/Profile */Cache",
+   "%LOCALAPPDATA%/Google/Chrome/User Data/Profile */Code Cache",
+   "%LOCALAPPDATA%/Google/Chrome/User Data/Profile */GPUCache",
+   "%LOCALAPPDATA%/Google/Chrome/User Data/ShaderCache",
+   "%LOCALAPPDATA%/Google/Chrome/User Data/GrShaderCache"
+  ]
+ },
+ {
+  "id": "edge",
+  "name": "Microsoft Edge",
+  "group": "Przeglądarki",
+  "default": true,
+  "processes": [
+   "msedge.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/Microsoft/Edge/User Data/Default/Cache",
+   "%LOCALAPPDATA%/Microsoft/Edge/User Data/Default/Code Cache",
+   "%LOCALAPPDATA%/Microsoft/Edge/User Data/Default/GPUCache",
+   "%LOCALAPPDATA%/Microsoft/Edge/User Data/Profile */Cache",
+   "%LOCALAPPDATA%/Microsoft/Edge/User Data/Profile */Code Cache",
+   "%LOCALAPPDATA%/Microsoft/Edge/User Data/ShaderCache",
+   "%LOCALAPPDATA%/Microsoft/Edge/User Data/GrShaderCache"
+  ]
+ },
+ {
+  "id": "brave",
+  "name": "Brave",
+  "group": "Przeglądarki",
+  "default": true,
+  "processes": [
+   "brave.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/BraveSoftware/Brave-Browser/User Data/Default/Cache",
+   "%LOCALAPPDATA%/BraveSoftware/Brave-Browser/User Data/Default/Code Cache",
+   "%LOCALAPPDATA%/BraveSoftware/Brave-Browser/User Data/Default/GPUCache",
+   "%LOCALAPPDATA%/BraveSoftware/Brave-Browser/User Data/ShaderCache"
+  ]
+ },
+ {
+  "id": "vivaldi",
+  "name": "Vivaldi",
+  "group": "Przeglądarki",
+  "default": true,
+  "processes": [
+   "vivaldi.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/Vivaldi/User Data/Default/Cache",
+   "%LOCALAPPDATA%/Vivaldi/User Data/Default/Code Cache",
+   "%LOCALAPPDATA%/Vivaldi/User Data/Default/GPUCache",
+   "%LOCALAPPDATA%/Vivaldi/User Data/ShaderCache"
+  ]
+ },
+ {
+  "id": "firefox",
+  "name": "Firefox",
+  "group": "Przeglądarki",
+  "default": true,
+  "processes": [
+   "firefox.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/Mozilla/Firefox/Profiles/*/cache2",
+   "%LOCALAPPDATA%/Mozilla/Firefox/Profiles/*/startupCache"
+  ]
+ },
+ {
+  "id": "steam",
+  "name": "Steam – cache przeglądarki",
+  "group": "Gry i launchery",
+  "default": true,
+  "processes": [
+   "steam.exe",
+   "steamwebhelper.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/Steam/htmlcache"
+  ]
+ },
+ {
+  "id": "epic",
+  "name": "Epic Games Launcher",
+  "group": "Gry i launchery",
+  "default": true,
+  "processes": [
+   "EpicGamesLauncher.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/EpicGamesLauncher/Saved/webcache",
+   "%LOCALAPPDATA%/EpicGamesLauncher/Saved/webcache_*",
+   "%LOCALAPPDATA%/EpicGamesLauncher/Saved/Logs"
+  ]
+ },
+ {
+  "id": "riot",
+  "name": "Riot Client – tylko logi",
+  "group": "Gry i launchery",
+  "default": true,
+  "processes": [
+   "RiotClientServices.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/Riot Games/Riot Client/Logs"
+  ],
+  "note": "Celowo bez folderu Data (v3.x go usuwała) - mógł zawierać sesję logowania."
+ },
+ {
+  "id": "minecraft",
+  "name": "Minecraft – logi i raporty awarii",
+  "group": "Gry i launchery",
+  "default": true,
+  "processes": [
+   "javaw.exe",
+   "Minecraft.exe"
+  ],
+  "paths": [
+   "%APPDATA%/.minecraft/logs",
+   "%APPDATA%/.minecraft/crash-reports"
+  ]
+ },
+ {
+  "id": "spotify",
+  "name": "Spotify",
+  "group": "Muzyka i media",
+  "default": true,
+  "processes": [
+   "Spotify.exe"
+  ],
+  "paths": [
+   "%LOCALAPPDATA%/Spotify/Data",
+   "%LOCALAPPDATA%/Spotify/Storage",
+   "%LOCALAPPDATA%/Spotify/Browser",
+   "%LOCALAPPDATA%/Packages/SpotifyAB.SpotifyMusic_*/LocalCache/Spotify/Data"
+  ],
+  "note": "Usuwa pobrany cache utworów - offline'owe playlisty trzeba będzie pobrać ponownie."
+ },
+ {
+  "id": "vscode",
+  "name": "Visual Studio Code",
+  "group": "Narzędzia",
+  "default": true,
+  "processes": [
+   "Code.exe"
+  ],
+  "paths": [
+   "%APPDATA%/Code/Cache",
+   "%APPDATA%/Code/CachedData",
+   "%APPDATA%/Code/Code Cache",
+   "%APPDATA%/Code/GPUCache",
+   "%APPDATA%/Code/logs"
+  ]
+ },
+ {
+  "id": "win_temp",
+  "name": "Windows – pliki tymczasowe (TEMP)",
+  "group": "System",
+  "default": true,
+  "processes": [],
+  "paths": [
+   "%TEMP%",
+   "%WINDIR%/Temp"
+  ],
+  "note": "Pliki w użyciu są pomijane. Folder %TEMP%/Roblox czyści osobna pozycja Roblox."
+ },
+ {
+  "id": "win_wer",
+  "name": "Windows – raporty błędów i zrzuty awarii",
+  "group": "System",
+  "default": true,
+  "processes": [],
+  "paths": [
+   "%LOCALAPPDATA%/CrashDumps",
+   "%LOCALAPPDATA%/Microsoft/Windows/WER",
+   "%PROGRAMDATA%/Microsoft/Windows/WER/ReportQueue"
+  ]
+ },
+ {
+  "id": "win_recent",
+  "name": "Windows – lista ostatnich plików",
+  "group": "System",
+  "default": false,
+  "processes": [],
+  "paths": [
+   "%APPDATA%/Microsoft/Windows/Recent"
+  ],
+  "note": "Kwestia prywatności, nie wydajności - domyślnie wyłączone."
+ },
+ {
+  "id": "gpu_nvidia",
+  "name": "NVIDIA – cache shaderów",
+  "group": "Karta graficzna",
+  "default": false,
+  "processes": [],
+  "paths": [
+   "%LOCALAPPDATA%/NVIDIA/DXCache",
+   "%LOCALAPPDATA%/NVIDIA/GLCache",
+   "%PROGRAMDATA%/NVIDIA Corporation/NV_Cache"
+  ],
+  "note": "Shadery zbudują się od nowa - pierwsze uruchomienia gier mogą chwilę przycinać. Pomaga przy glitchach po aktualizacji sterownika."
+ },
+ {
+  "id": "gpu_amd",
+  "name": "AMD – cache shaderów",
+  "group": "Karta graficzna",
+  "default": false,
+  "processes": [],
+  "paths": [
+   "%LOCALAPPDATA%/AMD/DxCache",
+   "%LOCALAPPDATA%/AMD/DxcCache",
+   "%LOCALAPPDATA%/AMD/GLCache",
+   "%LOCALAPPDATA%/AMD/VkCache"
+  ],
+  "note": "Jak wyżej - pierwsze uruchomienia gier mogą chwilę przycinać."
+ },
+ {
+  "id": "gpu_d3d",
+  "name": "DirectX – cache shaderów (D3DSCache)",
+  "group": "Karta graficzna",
+  "default": false,
+  "processes": [],
+  "paths": [
+   "%LOCALAPPDATA%/D3DSCache"
+  ],
+  "note": "Jak wyżej - pierwsze uruchomienia gier mogą chwilę przycinać."
+ }
 ]

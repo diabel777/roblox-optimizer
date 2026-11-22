@@ -62,6 +62,33 @@ def status() -> DefenderStatus:
                           parse_dt(d.get("upd")), parse_dt(d.get("quick")), parse_dt(d.get("full")))
 
 
+HARDEN_ITEMS = {
+    "pua": ("Blokowanie niechcianych programów (adware, „optymalizatory”)", "Set-MpPreference -PUAProtection Enabled"),
+    "cloud": ("Ochrona w chmurze (szybsze wykrywanie nowych wirusów)", "Set-MpPreference -MAPSReporting Advanced;Set-MpPreference -CloudBlockLevel High"),
+    "network": ("Ochrona sieci (blokada groźnych stron i serwerów)", "Set-MpPreference -EnableNetworkProtection Enabled"),
+    "firewall": ("Zapora Windows włączona dla wszystkich sieci", "Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True"),
+    "ransomware": ("Ochrona folderów przed ransomware (Dokumenty, Zdjęcia…)", "Set-MpPreference -EnableControlledFolderAccess Enabled"),
+}
+_HARDEN_STATUS = ("$p=Get-MpPreference;$f=@(Get-NetFirewallProfile);"
+                  "[pscustomobject]@{pua=([int]$p.PUAProtection -eq 1);cloud=([int]$p.MAPSReporting -eq 2);"
+                  "network=([int]$p.EnableNetworkProtection -eq 1);firewall=(@($f|Where-Object{-not $_.Enabled}).Count -eq 0);"
+                  "ransomware=([int]$p.EnableControlledFolderAccess -eq 1)} | ConvertTo-Json")
+
+
+def harden_status() -> tuple[bool, dict]:
+    ok, data = ps.run_json(_HARDEN_STATUS, 30)
+    return ok, (data[0] if ok and data else {})
+
+
+def harden(keys: list[str]) -> tuple[bool, str]:
+    """Włącza wybrane zabezpieczenia (stałe polecenia z listy, wymaga admina). Wszystko cofa się w Zabezpieczeniach Windows."""
+    keys = [k for k in keys if k in HARDEN_ITEMS]
+    if not keys:
+        return False, "Nic nie wybrano."
+    rc, out = ps.run(";".join(HARDEN_ITEMS[k][1] for k in keys), 60)
+    return rc == 0, "Włączono wybrane zabezpieczenia." if rc == 0 else (out[:240] or "Wymaga uprawnień administratora.")
+
+
 def update_signatures() -> tuple[bool, str]:
     rc, out = ps.run("Update-MpSignature", 300)
     return rc == 0, "Definicje wirusów zaktualizowane." if rc == 0 else (out[:240] or "Aktualizacja nie powiodła się.")

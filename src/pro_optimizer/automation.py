@@ -16,12 +16,13 @@ DEFAULTS: dict = {
     "tweaks": {"enabled": False, "interval_hours": 6},
     "defender": {"enabled": False, "interval_hours": 12},
     "game_boost": {"enabled": True},
+    "app_opt": {"enabled": True},
 }
 
 TASK_LABELS = {
     "ram": "Zwolnienie pamięci RAM", "dns": "Wyczyszczenie DNS", "clean": "Czyszczenie cache aplikacji",
     "tweaks": "Pilnowanie optymalizacji Windows", "defender": "Aktualizacja definicji antywirusa",
-    "game_boost": "Doping uruchomionej gry",
+    "game_boost": "Doping uruchomionej gry", "app_opt": "Optymalizacja aplikacji w tle",
 }
 
 
@@ -99,6 +100,12 @@ def run_task(name: str, settings, catalog: list[dict], games: list[dict], runnin
         return True, ("przywrócono: " + ", ".join(fixed)) if fixed else "wszystko już ustawione"
     if name == "defender":
         return defender.update_signatures()
+    if name == "app_opt":
+        from . import appopt
+        if not gm.running_game_exes(games, running):
+            return True, "brak uruchomionej gry - nic do zrobienia (działa automatycznie, gdy włączysz grę)"
+        n = appopt.lower_background()
+        return True, f"obniżono priorytet {n} procesów w tle (wrócą do normy po zakończeniu gry)"
     if name == "game_boost":
         live = gm.running_game_exes(games, running)
         saved = settings.get("games") or {}
@@ -106,7 +113,11 @@ def run_task(name: str, settings, catalog: list[dict], games: list[dict], runnin
         for g in live:
             if (saved.get(g["id"]) or {}).get("auto_boost", True):
                 n += gm.boost_running(g.get("exes", []))
+        extra = ""
+        if n and merged(settings.get("auto"))["app_opt"]["enabled"]:
+            from . import appopt
+            extra = f", {appopt.lower_background()} programów w tle spowolniono"
         if n:
             winsys.trim_ram()
-        return True, f"gra: {', '.join(g['name'] for g in live)} - priorytet podniesiony ({n} proc.), pamięć zwolniona"
+        return True, f"gra: {', '.join(g['name'] for g in live)} - priorytet podniesiony ({n} proc.), pamięć zwolniona{extra}"
     return False, "nieznane zadanie"

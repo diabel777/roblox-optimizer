@@ -12,7 +12,7 @@ SEV = {"crit": ("Krytyczne", "danger"), "warn": ("Do poprawy", "warning"), "info
 
 
 class DiagnosticsPage(Page):
-    title = "Analiza i naprawa"
+    title = "Napraw problemy"
     subtitle = "Sprawdzam komputer i gry, mówię co jest nie tak i dlaczego - i naprawiam jednym kliknięciem."
 
     def __init__(self, master, app):

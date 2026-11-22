@@ -110,6 +110,13 @@ Dwuklik na `ZBUDUJ.bat` (albo `ZBUDUJ.bat "opis zmian"` w cmd). Skrypt sam znajd
 Klucz podpisu jest kopiowany do `%USERPROFILE%\POU-keys` - poza projektem, więc skasowanie folderu projektu go nie usuwa.
 Skrypt nigdy nie generuje nowego klucza sam (nowy klucz = zainstalowane aplikacje odrzucą aktualizacje).
 
+## Nowości w 4.4
+- Samonaprawa: launcher (kopia zapasowa), skróty i wpis w Aplikacjach odtwarzają się same; aplikacja nie zostaje już w trybie administratora po restarcie.
+- Pady: pilnowanie koloru, automatyczna siła spustów zależnie od gry, instalacja DS4Windows (pad jako Xbox).
+- Windows i sieć: „Dopasuj do mojego komputera”, ping, szybki DNS, strojenie TCP. Ochrona: dodatkowe tarcze Windows.
+- Optymalizacja aplikacji w tle podczas gry, ponad 60 gier (m.in. Motor Town), czyszczenie Opery nie wylogowuje komunikatorów.
+- Podpisana lista plików aplikacji (wykrywanie podmiany plików).
+
 ## Nowości w 4.3
 - **Pady i kierownice**: pad PS4/PS5 (kolor paska, jasność, test wibracji, spusty adaptacyjne DualSense, głośność głośnika/słuchawek/mikrofonu, dioda mikrofonu) przez oficjalny kanał HID oraz gotowe profile kierownicy (Logitech, Thrustmaster, Fanatec, Moza) do Forza Horizon 4/5.
 
