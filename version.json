@@ -1,11 +1,11 @@
 {
-  "version": "4.4.0",
+  "version": "4.5.0",
   "notes": "",
   "package": {
-    "url": "https://github.com/diabel777/roblox-optimizer/releases/download/v4.4.0/ProUltimateOptimizer-4.4.0.zip",
-    "sha256": "969598492879bbda28d148789e01dbf7eaf3f2a72e79cd82dbf2dd7328a6728d",
-    "size": 18608406
+    "url": "https://github.com/diabel777/roblox-optimizer/releases/download/v4.5.0/ProUltimateOptimizer-4.5.0.zip",
+    "sha256": "f51f1009eb0de2ca75f6a3ba9ddb2208c4062690e3e2255961565757d4ec62f1",
+    "size": 18609843
   },
   "download_url": "https://github.com/diabel777/roblox-optimizer/releases/latest/download/ProUltimateOptimizer-Setup.exe",
-  "signature": "b8bb3ea4fb1b8efff59d87c5a5de2a53b67f5b8103683c156d5f690a2bd9437a64bc30b03cc2c14c1644106f4166c289a6f80d82c9853c3e5e5691d9dae7720a"
+  "signature": "925a0a468af64e67477cfaeb8e042701f50092668a009fd4b9486beb32613285b84556b836b43c6a3485ae94a6ee29f149c2b8a4de211cb4b11acc9fd5b57b07"
 }
