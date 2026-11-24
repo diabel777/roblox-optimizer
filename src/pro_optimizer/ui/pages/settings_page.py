@@ -101,7 +101,7 @@ class SettingsPage(Page):
         ac = w.card(body)
         ac.grid(row=4, column=0, sticky="ew", pady=(14, 0))
         w.label(ac, "Wygląd i tło", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 4))
-        w.label(ac, "Wybierz motyw kolorów. Aplikacja uruchomi się ponownie, żeby go zastosować.", "small", c.muted).pack(fill="x", padx=22)
+        w.label(ac, "Wybierz motyw kolorów. Zmiana działa od razu, bez restartu.", "small", c.muted).pack(fill="x", padx=22)
         tr = ctk.CTkFrame(ac, fg_color="transparent")
         tr.pack(fill="x", padx=22, pady=(10, 4))
         for i, (key, th) in enumerate(THEMES.items()):
@@ -169,8 +169,8 @@ class SettingsPage(Page):
 
     def apply_theme(self, key: str) -> None:
         self._write_theme(colors=THEMES[key]["colors"], _aderis_theme=key)
-        self.app.toast.show("Zapisano. Uruchamiam aplikację ponownie…", "ok")
-        self.after(900, self.app.restart_now)
+        self.app.toast.show("Motyw zmieniony.", "ok")
+        self.after(50, lambda: self.app.rebuild_ui("settings"))
 
     def toggle_anim(self) -> None:
         self._write_theme(animations=bool(self.anim_var.get()))

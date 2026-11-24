@@ -138,7 +138,10 @@ class SpeedPage(Page):
 
         hc = w.card(body)
         hc.pack(fill="x", pady=(14, 20))
-        w.label(hc, "Poprzednie testy", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 6))
+        ht = ctk.CTkFrame(hc, fg_color="transparent", height=1)
+        ht.pack(fill="x", padx=22, pady=(18, 6))
+        w.label(ht, "Poprzednie testy", "heading", c.text, "bold").pack(side="left")
+        w.button(ht, "Usuń historię", self.clear_history, "ghost", height=30, width=130).pack(side="right")
         self.hist = ctk.CTkFrame(hc, fg_color="transparent")
         self.hist.pack(fill="x", padx=22, pady=(0, 16))
         self._render_history()
@@ -237,12 +240,12 @@ class SpeedPage(Page):
         if not txt:
             self.app.toast.show("Najpierw zrób test.", "warn")
             return
-        path = fd.asksaveasfilename(title="Zapisz raport", defaultextension=".txt", initialfile="raport-internet.txt",
-                                    filetypes=[("Tekst", "*.txt")])
-        if path:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(txt)
-            self.app.toast.show("Raport zapisany. Dołącz go do zgłoszenia u dostawcy.", "ok")
+        from ... import paths
+        d = paths.reports_dir()
+        d.mkdir(parents=True, exist_ok=True)
+        path = d / time.strftime("raport-internet-%Y-%m-%d_%H-%M-%S.txt")
+        path.write_text(txt, encoding="utf-8")
+        self.app.toast.show("Raport zapisany w zakładce „Pobrane”. Dołącz go do zgłoszenia u dostawcy.", "ok", 5500)
 
     def copy_report(self) -> None:
         txt = self._report()
@@ -252,6 +255,18 @@ class SpeedPage(Page):
         self.clipboard_clear()
         self.clipboard_append(txt)
         self.app.toast.show("Raport skopiowany - wklej go w czacie lub mailu do dostawcy.", "ok")
+
+    def clear_history(self) -> None:
+        if not (self.app.settings.get("speed_history") or []):
+            return
+        if w.confirm(self, "Usuń historię", "Usunąć wszystkie zapisane wyniki testów?", "Usuń", danger=True):
+            self.app.settings.set("speed_history", [])
+            self._render_history()
+
+    def delete_one(self, t) -> None:
+        hist = [h for h in (self.app.settings.get("speed_history") or []) if isinstance(h, dict) and h.get("time") != t]
+        self.app.settings.set("speed_history", hist)
+        self._render_history()
 
     def _render_history(self) -> None:
         for ch in self.hist.winfo_children():
@@ -270,6 +285,7 @@ class SpeedPage(Page):
             b.set((h.get("down") or 0) / mx)
             b.pack(side="left", padx=8)
             w.label(r, f"↓ {h.get('down') or 0:.0f}  ↑ {h.get('up') or 0:.0f} Mb/s   ping {h.get('ping') or 0:.0f} ms", "small", c.text).pack(side="left")
+            w.button(r, "Usuń", lambda t=h.get("time"): self.delete_one(t), "ghost", height=24, width=60).pack(side="right")
 
     def on_show(self) -> None:
         pass

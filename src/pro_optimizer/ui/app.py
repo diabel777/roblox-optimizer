@@ -10,6 +10,8 @@ import time
 from pathlib import Path
 from typing import Callable, Optional
 
+import tkinter as tk
+
 import customtkinter as ctk
 
 from .. import automation, config, display, fan as fanmod, games as gamesmod, hw, paths, roblox, winsys
@@ -75,7 +77,9 @@ class App(ctk.CTk):
         self._nav: dict[str, ctk.CTkButton] = {}
         self._current: Optional[str] = None
 
+        before = set(self.winfo_children())
         self._build_layout()
+        self._layout_widgets = [w_ for w_ in self.winfo_children() if w_ not in before]
         self.show_page("dashboard")
 
         self.after(400, self._style_window)
@@ -103,14 +107,35 @@ class App(ctk.CTk):
             _set_icon()
             self.after(300, _set_icon)      # customtkinter podmienia ikonę po ~200 ms - ustawiamy ją jeszcze raz
 
+    def rebuild_ui(self, page: str = "dashboard") -> None:
+        """Przeładowuje wygląd (motyw) bez restartu aplikacji: odbudowuje panele, a okno, pad, tray i zadania zostają."""
+        theme.load()
+        anim.set_enabled(theme.flags.animations)
+        self.configure(fg_color=c.bg)
+        for wd in list(getattr(self, "_layout_widgets", [])):
+            try:
+                wd.destroy()
+            except Exception:
+                pass
+        self._pages, self._nav, self._current = {}, {}, None
+        before = set(self.winfo_children())
+        self._build_layout()
+        self._layout_widgets = [w_ for w_ in self.winfo_children() if w_ not in before]
+        self.toast.configure(fg_color=c.card)
+        self.toast.lbl.configure(text_color=c.text)
+        self.show_page(page)
+
     def report_callback_exception(self, exc, val, tb):  # błąd w callbacku nie może zabić aplikacji
+        if isinstance(val, tk.TclError):             # np. odświeżanie strony, którą właśnie przeładowano (zmiana motywu)
+            log.debug("TclError w UI: %s", val)
+            return
         log.error("Nieobsłużony wyjątek w UI", exc_info=(exc, val, tb))
         self.toast.show(f"Wystąpił błąd: {val}", "err")
 
     # ------------------------------------------------------------------ układ
     def _build_layout(self) -> None:
         from .pages import (antivirus_page, automation_page, backups_page, cleaner_page, dashboard, diagnostics_page,
-                            controllers_page, drivers_page, fan_page, games_page, settings_page, speedtest_page, system_page)
+                            controllers_page, downloads_page, drivers_page, fan_page, games_page, settings_page, speedtest_page, system_page)
         self.page_defs = [
             ("dashboard", "Panel główny", dashboard.DashboardPage),
             ("games", "Gry", games_page.GamesPage),
@@ -124,6 +149,7 @@ class App(ctk.CTk):
             ("antivirus", "Ochrona", antivirus_page.AntivirusPage),
             ("drivers", "Sterowniki", drivers_page.DriversPage),
             ("backups", "Kopie zapasowe", backups_page.BackupsPage),
+            ("downloads", "Pobrane", downloads_page.DownloadsPage),
             ("settings", "Ustawienia", settings_page.SettingsPage),
         ]
         self.grid_columnconfigure(1, weight=1)

@@ -36,6 +36,10 @@ def downloads_dir() -> Path:
     return install_root() / "downloads"
 
 
+def reports_dir() -> Path:
+    return install_root() / "reports"
+
+
 def settings_file() -> Path:
     return install_root() / "settings.json"
 

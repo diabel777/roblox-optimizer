@@ -110,6 +110,12 @@ Dwuklik na `ZBUDUJ.bat` (albo `ZBUDUJ.bat "opis zmian"` w cmd). Skrypt sam znajd
 Klucz podpisu jest kopiowany do `%USERPROFILE%\POU-keys` - poza projektem, więc skasowanie folderu projektu go nie usuwa.
 Skrypt nigdy nie generuje nowego klucza sam (nowy klucz = zainstalowane aplikacje odrzucą aktualizacje).
 
+## Nowości w 4.7.1
+
+- **Motyw zmienia się od razu**, bez restartu aplikacji.
+- **Pobrane** - nowa zakładka: paczki aktualizacji i zapisane raporty, z otwieraniem i usuwaniem.
+- **Test internetu**: usuwanie pojedynczych wyników i całej historii; raporty zapisują się do zakładki Pobrane.
+
 ## Nowości w 4.7
 
 - **Logo wszędzie** - ikona .exe, paska zadań i skrótów to teraz Twoje logo (wcześniej budowanie nadpisywało je piorunem).
