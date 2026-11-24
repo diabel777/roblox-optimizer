@@ -25,9 +25,24 @@ def render(size: int = 1024) -> Image.Image:
     return img
 
 
+LOGO = Path(__file__).resolve().parents[1] / "assets" / "logo_mark.png"
+
+
+def from_logo(size: int = 1024) -> Image.Image:
+    """Ikona = prawdziwe logo Aderis Boost (kwadrat, zaokrąglone rogi)."""
+    im = Image.open(LOGO).convert("RGBA")
+    side = min(im.size)
+    im = im.crop(((im.width - side) // 2, (im.height - side) // 2, (im.width + side) // 2, (im.height + side) // 2)).resize((size, size), Image.LANCZOS)
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, size - 1, size - 1), radius=int(size * 0.2), fill=255)
+    out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    out.paste(im, (0, 0), mask)
+    return out
+
+
 def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    big = render()
+    big = from_logo() if LOGO.exists() else render()
     big.save(OUT, format="ICO", sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
     print("Zapisano", OUT)
 

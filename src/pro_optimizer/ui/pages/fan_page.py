@@ -45,6 +45,17 @@ class FanPage(Page):
         self.sub = w.label(body, "", "small", c.muted)
         self.sub.grid(row=2, column=0, sticky="w", pady=(0, 10))
 
+        # --- procesor i obudowa
+        ic = w.card(body)
+        ic.grid(row=20, column=0, sticky="ew", pady=(14, 20))
+        w.label(ic, "Wentylator procesora i obudowy", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 4))
+        w.label(ic, "Wentylatorami karty graficznej (NVIDIA) sterujemy tu bezpośrednio. Wentylatory procesora i obudowy podpięte są do płyty głównej - "
+                "Windows nie daje do nich bezpiecznego dostępu, a sterowanie nimi wymaga własnego sterownika jądra, który antywirusy i anty-cheaty "
+                "(Vanguard, EAC, Roblox Hyperion) traktują jak zagrożenie i mogą za niego zablokować konto. Dlatego robimy to tylko tam, "
+                "gdzie jest to oficjalnie dozwolone.", "small", c.muted, wraplength=760).pack(fill="x", padx=22)
+        w.label(ic, "Jak ustawić je samemu: wejdź do BIOS-u (klawisz Del przy starcie) → „Q-Fan” / „Smart Fan” / „Hardware Monitor” i wybierz krzywą. "
+                "To działa zawsze, także w grach.", "small", c.text, wraplength=760).pack(fill="x", padx=22, pady=(8, 16))
+
         # --- sterowanie
         mc = w.card(body)
         mc.grid(row=3, column=0, sticky="ew")

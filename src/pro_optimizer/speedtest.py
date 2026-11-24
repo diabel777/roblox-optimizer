@@ -176,3 +176,127 @@ def run(on_phase: Callable[[str, float, Optional[float]], None], stop: Optional[
     res["up"] = measure_upload(6, lambda s, p: on_phase("up", p, s), stop)
     on_phase("done", 1.0, None)
     return res
+
+
+# ----------------------------------------------------------------------------- kontekst, porady, raport
+def connection_info() -> dict:
+    """Co wiemy o łączu komputera: typ (kabel/Wi-Fi), szybkość karty, sygnał Wi-Fi, obciążenie. Tylko odczyt, bez wysyłania."""
+    info: dict = {"type": "nieznane", "adapter": "", "link_mbps": None, "wifi_signal": None, "wifi_band": "",
+                  "cpu": None, "ram": None, "os": ""}
+    try:
+        import platform
+        import psutil
+        info["os"] = f"{platform.system()} {platform.release()}"
+        info["cpu"] = psutil.cpu_percent(interval=0.3)
+        info["ram"] = psutil.virtual_memory().percent
+    except Exception:
+        pass
+    try:
+        from . import ps
+        if ps.IS_WINDOWS:
+            ok, data = ps.run_json("Get-NetAdapter | Where-Object {$_.Status -eq 'Up' -and -not $_.Virtual} | "
+                                   "Select-Object Name,InterfaceDescription,LinkSpeed,PhysicalMediaType,NdisPhysicalMedium | ConvertTo-Json", 20)
+            if ok and data:
+                a = data[0]
+                media = f"{a.get('PhysicalMediaType', '')} {a.get('Name', '')} {a.get('InterfaceDescription', '')}".lower()
+                info["type"] = "Wi-Fi" if ("802.11" in media or "wi-fi" in media or "wireless" in media or "wlan" in media) else "kabel (Ethernet)"
+                info["adapter"] = str(a.get("InterfaceDescription") or "")
+                ls = str(a.get("LinkSpeed") or "")
+                num = "".join(ch for ch in ls.split()[0] if ch.isdigit() or ch == ".") if ls else ""
+                if num:
+                    mult = 1000 if "Gb" in ls else (0.001 if "Kb" in ls else 1)
+                    info["link_mbps"] = float(num) * mult
+            if info["type"] == "Wi-Fi":
+                rc, out = ps.run("netsh wlan show interfaces", 10)
+                for line in out.splitlines():
+                    k, _, v = line.partition(":")
+                    k, v = k.strip().lower(), v.strip()
+                    if k in ("signal", "sygnał") and v.endswith("%"):
+                        info["wifi_signal"] = int(v[:-1] or 0)
+                    if k in ("radio type", "typ radia"):
+                        info["wifi_band"] = v
+    except Exception:
+        pass
+    return info
+
+
+def advice(res: dict, info: dict, context: Optional[dict] = None) -> list[dict]:
+    """Lista porad: {'title','text','page'} - page to strona aplikacji, na którą można przeskoczyć (lub None)."""
+    context = context or {}
+    out: list[dict] = []
+    ping, jit, loss = res.get("ping"), res.get("jitter", 0) or 0, res.get("loss", 0) or 0
+    down, up, loaded = res.get("down", 0) or 0, res.get("up", 0) or 0, res.get("loaded_ping")
+    wifi = (context.get("conn") or info.get("type") or "").lower().startswith("wi")
+    link = info.get("link_mbps")
+
+    def add(title, text, page=None):
+        out.append({"title": title, "text": text, "page": page})
+
+    if wifi:
+        if (info.get("wifi_signal") or 100) < 60:
+            add("Słaby sygnał Wi-Fi", f"Sygnał to tylko {info.get('wifi_signal')}%. Podejdź bliżej routera albo podłącz komputer kablem - "
+                "to najpewniejszy sposób na niższy ping.")
+        if ping and (ping > 40 or jit > 15):
+            add("Wi-Fi zwiększa ping", "Wi-Fi zawsze dodaje opóźnienia i skoki. W grach najlepiej użyć kabla sieciowego. Jeśli się nie da: "
+                "sieć 5 GHz zamiast 2,4 GHz i brak ścian między komputerem a routerem.")
+    if link and down and link < 150 and down > link * 0.8:
+        add("Karta sieciowa ogranicza prędkość", f"Karta pracuje na {link:.0f} Mb/s - to Twój sufit. Sprawdź kabel (powinien być kat. 5e lub lepszy) i port w routerze.")
+    if ping and ping > 70:
+        add("Wysoki ping", "Zrestartuj router (wyjmij zasilanie na 30 s). Jeśli się nie poprawi, zmień serwery DNS w „Szybszy Windows i internet”. "
+            "Przy stałym pingu >70 ms zgłoś to dostawcy z raportem poniżej.", "system")
+    if jit > 20:
+        add("Niestabilne połączenie (jitter)", "Skoki opóźnienia psują grę i rozmowy. Zamknij programy, które pobierają w tle (aktualizacje, torrent, chmura).")
+    if loss and loss > 1:
+        add("Gubienie pakietów", "To zwykle wina kabla, gniazdka lub dostawcy. Wymień kabel i zrób test ponownie. Jeśli dalej gubi - zgłoś awarię z raportem.")
+    if loaded is not None and ping is not None and loaded - ping > 100:
+        add("Bufferbloat: łącze się „zapycha”", f"Pod obciążeniem ping rośnie z {ping:.0f} do {loaded:.0f} ms. W routerze włącz QoS / SQM (Smart Queue), "
+            "a limit prędkości ustaw na ok. 90% wyniku testu.")
+    if (info.get("cpu") or 0) > 85 or (info.get("ram") or 0) > 90:
+        add("Komputer był mocno obciążony", "Podczas testu procesor lub pamięć były prawie pełne - wynik może być zaniżony. Zamknij programy i powtórz test.", "dashboard")
+    if context.get("others") == "tak":
+        add("Inni korzystali z internetu", "Gdy ktoś ogląda filmy lub pobiera, Twoje łącze jest dzielone. Powtórz test, gdy nikt inny nie korzysta.")
+    if down and down < 20:
+        add("Niska prędkość pobierania", "Sprawdź w umowie, jaką prędkość masz zapłaconą. Jeśli wynik jest wyraźnie niższy (poniżej ~70%), reklamuj usługę z raportem.")
+    if not out:
+        add("Wszystko w porządku", "Łącze wygląda zdrowo. Jeśli coś mimo to się tnie, problem jest raczej po stronie serwera gry niż Twojego internetu.")
+    return out
+
+
+def report_text(res: dict, info: dict, context: Optional[dict] = None, app_version: str = "") -> str:
+    """Raport do wysłania dostawcy internetu: wszystkie parametry naraz, żeby nie trzeba było dopytywać o kabel i sprzęt."""
+    context = context or {}
+    f = lambda v, u="": "brak" if v is None else f"{v:.1f}{u}"
+    g = grade(res)
+    lines = [
+        "RAPORT Z TESTU INTERNETU (Aderis Boost" + (f" {app_version}" if app_version else "") + ")",
+        "Data: " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(res.get("time") or time.time())),
+        "Serwer testu: speed.cloudflare.com (HTTPS)",
+        "",
+        "WYNIKI",
+        f"  Pobieranie:                {f(res.get('down'), ' Mb/s')}",
+        f"  Wysyłanie:                 {f(res.get('up'), ' Mb/s')}",
+        f"  Ping (mediana):            {f(res.get('ping'), ' ms')}",
+        f"  Jitter:                    {f(res.get('jitter'), ' ms')}",
+        f"  Utrata pakietów:           {f(res.get('loss'), ' %')}",
+        f"  Ping pod obciążeniem:      {f(res.get('loaded_ping'), ' ms')}",
+        f"  Opóźnienie pod obciążeniem: {g.get('Opóźnienie pod obciążeniem', '-')}",
+        "",
+        "SPRZĘT I POŁĄCZENIE",
+        f"  Typ połączenia (wykryty):  {info.get('type')}",
+        f"  Typ połączenia (podany):   {context.get('conn') or 'nie podano'}",
+        f"  Karta sieciowa:            {info.get('adapter') or 'brak danych'}",
+        f"  Szybkość karty:            {f(info.get('link_mbps'), ' Mb/s') if info.get('link_mbps') else 'brak danych'}",
+    ]
+    if info.get("type") == "Wi-Fi":
+        lines.append(f"  Sygnał Wi-Fi:              {info.get('wifi_signal') if info.get('wifi_signal') is not None else 'brak'} %  ({info.get('wifi_band') or '-'})")
+    lines += [
+        f"  System:                    {info.get('os') or '-'}",
+        f"  Obciążenie CPU / RAM:      {f(info.get('cpu'), ' %')} / {f(info.get('ram'), ' %')}",
+        f"  Inne urządzenia w sieci:   {context.get('others') or 'nie podano'}",
+        f"  Router/modem przeżył restart: {context.get('restarted') or 'nie podano'}",
+        "",
+        "OCENA: " + "; ".join(f"{k}: {v}" for k, v in g.items()),
+        "",
+        "Raport nie zawiera nazwy komputera, kont ani adresu IP.",
+    ]
+    return "\n".join(lines)

@@ -62,6 +62,18 @@ def status() -> DefenderStatus:
                           parse_dt(d.get("upd")), parse_dt(d.get("quick")), parse_dt(d.get("full")))
 
 
+def clean_error(out: str, default: str = "Nie udało się.") -> str:
+    """Zamienia surowy błąd PowerShella (także CLIXML) na jedno zdanie po polsku."""
+    import re
+    low = (out or "").lower()
+    if "enough permissions" in low or "access is denied" in low or "0x80070005" in low or "odmowa dostępu" in low:
+        return "Windows wymaga do tego uprawnień administratora. Kliknij prawym na aplikację → Uruchom jako administrator."
+    txt = re.sub(r"<[^>]+>", " ", out or "")
+    txt = re.sub(r"_x[0-9A-Fa-f]{4}_|#<\s*CLIXML", " ", txt)
+    txt = re.sub(r"\s+", " ", txt).strip()
+    return txt[:200] or default
+
+
 HARDEN_ITEMS = {
     "pua": ("Blokowanie niechcianych programów (adware, „optymalizatory”)", "Set-MpPreference -PUAProtection Enabled"),
     "cloud": ("Ochrona w chmurze (szybsze wykrywanie nowych wirusów)", "Set-MpPreference -MAPSReporting Advanced;Set-MpPreference -CloudBlockLevel High"),
@@ -86,12 +98,12 @@ def harden(keys: list[str]) -> tuple[bool, str]:
     if not keys:
         return False, "Nic nie wybrano."
     rc, out = ps.run(";".join(HARDEN_ITEMS[k][1] for k in keys), 60)
-    return rc == 0, "Włączono wybrane zabezpieczenia." if rc == 0 else (out[:240] or "Wymaga uprawnień administratora.")
+    return rc == 0, "Włączono wybrane zabezpieczenia." if rc == 0 else clean_error(out, "Wymaga uprawnień administratora.")
 
 
 def update_signatures() -> tuple[bool, str]:
     rc, out = ps.run("Update-MpSignature", 300)
-    return rc == 0, "Definicje wirusów zaktualizowane." if rc == 0 else (out[:240] or "Aktualizacja nie powiodła się.")
+    return rc == 0, "Definicje wirusów zaktualizowane." if rc == 0 else clean_error(out, "Aktualizacja nie powiodła się.")
 
 
 def scan(kind: str = "quick", path: Optional[str] = None) -> tuple[bool, str]:
@@ -101,11 +113,11 @@ def scan(kind: str = "quick", path: Optional[str] = None) -> tuple[bool, str]:
             return False, "Nieprawidłowa ścieżka."
         # ścieżka idzie przez zmienną środowiskową, a nie przez sklejanie tekstu skryptu - nie da się wstrzyknąć poleceń
         rc, out = ps.run("Start-MpScan -ScanType CustomScan -ScanPath $env:POU_SCANPATH", 4 * 3600, env={"POU_SCANPATH": path})
-        return rc == 0, "Skanowanie zakończone." if rc == 0 else (out[:240] or "Skanowanie przerwane.")
+        return rc == 0, "Skanowanie zakończone." if rc == 0 else clean_error(out, "Skanowanie przerwane.")
     else:
         cmd = "Start-MpScan -ScanType " + ("FullScan" if kind == "full" else "QuickScan")
     rc, out = ps.run(cmd, 4 * 3600)
-    return rc == 0, "Skanowanie zakończone." if rc == 0 else (out[:240] or "Skanowanie przerwane.")
+    return rc == 0, "Skanowanie zakończone." if rc == 0 else clean_error(out, "Skanowanie przerwane.")
 
 
 def threats() -> tuple[bool, list[dict]]:
@@ -117,7 +129,7 @@ def threats() -> tuple[bool, list[dict]]:
 
 def remove_threats() -> tuple[bool, str]:
     rc, out = ps.run("Remove-MpThreat", 300)
-    return rc == 0, "Usunięto wykryte zagrożenia." if rc == 0 else (out[:240] or "Nie udało się usunąć (wymaga administratora).")
+    return rc == 0, "Usunięto wykryte zagrożenia." if rc == 0 else clean_error(out, "Nie udało się usunąć (wymaga administratora).")
 
 
 def startup_audit() -> tuple[bool, list[dict]]:

@@ -63,7 +63,7 @@ class ControllersPage(Page):
         self.pad_body.pack(fill="both", expand=True)
         self._build_pad(self.pad_body)
         self._build_wheel(self.wheel_body)
-        self.after(20000, self._poll_battery)
+        self.after(5000, self._poll_battery)
 
     def _tab(self, which: str) -> None:
         self.pad_body.pack_forget()
@@ -98,6 +98,31 @@ class ControllersPage(Page):
         w.label(top, "Ustawienia trafiają do pada oficjalnym kanałem HID - bez sterowników i bez ingerencji w gry, więc anty-cheaty "
                 "ich nie widzą. Pad po odłączeniu wraca do ustawień fabrycznych.", "small", c.muted, wraplength=720
                 ).pack(fill="x", padx=22, pady=(0, 14))
+
+        # --- bateria i powiadomienia
+        from ... import padbattery as pb
+        al = pb.sanitize_alerts(self.app.settings.get("pad_alerts"))
+        bc = w.card(body)
+        bc.pack(fill="x", pady=(14, 0))
+        w.label(bc, "Bateria i powiadomienia", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 2))
+        self.est = w.label(bc, "Szacunek czasu pojawi się po kilku minutach pomiarów.", "body", c.muted)
+        self.est.pack(fill="x", padx=22, pady=(0, 6))
+        self.al_on = tk.BooleanVar(value=al["enabled"])
+        self.al_full = tk.BooleanVar(value=al["full"])
+        w.switch(bc, "Powiadamiaj o stanie baterii (też gdy okno jest zamknięte)", variable=self.al_on, command=self._save_alerts).pack(anchor="w", padx=22, pady=4)
+        ar = ctk.CTkFrame(bc, fg_color="transparent")
+        ar.pack(fill="x", padx=22, pady=2)
+        w.label(ar, "Powiadom, gdy bateria spadnie o", "body", c.text).pack(side="left")
+        self.al_drop = w.option_menu(ar, ["1%", "2%", "5%", "10%", "20%"], command=lambda _v: self._save_alerts(), width=90)
+        self.al_drop.set(f"{al['drop']}%" if f"{al['drop']}%" in ("1%", "2%", "5%", "10%", "20%") else "5%")
+        self.al_drop.pack(side="left", padx=8)
+        w.label(ar, "i gdy zostanie mniej niż", "body", c.text).pack(side="left")
+        self.al_low = w.option_menu(ar, ["wyłączone", "10%", "15%", "20%", "30%"], command=lambda _v: self._save_alerts(), width=110)
+        self.al_low.set(f"{al['low']}%" if f"{al['low']}%" in ("10%", "15%", "20%", "30%") else ("wyłączone" if al["low"] == 0 else "15%"))
+        self.al_low.pack(side="left", padx=8)
+        w.switch(bc, "Powiadom, gdy pad jest naładowany", variable=self.al_full, command=self._save_alerts).pack(anchor="w", padx=22, pady=4)
+        w.label(bc, "Czas pracy liczymy z tempa rozładowania w ostatnich minutach - im dłużej pad jest podłączony do aplikacji, tym dokładniejszy wynik.",
+                "small", c.muted, wraplength=700).pack(fill="x", padx=22, pady=(2, 16))
 
         # --- kolor
         cc = w.card(body)
@@ -160,6 +185,13 @@ class ControllersPage(Page):
         vc = w.card(body)
         vc.pack(fill="x", pady=(14, 0))
         w.label(vc, "Wibracje i spusty adaptacyjne", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 6))
+        self.auto_trig = tk.BooleanVar(value=self.cfg["auto_triggers"])
+        w.switch(vc, "Automatyczna siła spustów zależnie od gry", variable=self.auto_trig).pack(anchor="w", padx=22, pady=(0, 2))
+        self.auto_state = w.label(vc, "", "small", c.accent2)
+        self.auto_state.pack(fill="x", padx=60, pady=(0, 6))
+        w.label(vc, "Włączone: gdy uruchomisz grę wyścigową, lewy spust robi się jak hamulec, a prawy lekki jak gaz; w strzelankach prawy "
+                "działa jak spust broni. Po wyjściu z gry wracają Twoje ustawienia. Tylko DualSense (PS5).", "small", c.muted,
+                wraplength=700).pack(fill="x", padx=60, pady=(0, 8))
         self.rl = tk.IntVar(value=self.cfg["rumble_left"])
         self.rr = tk.IntVar(value=self.cfg["rumble_right"])
         for txt, var in (("Silnik lewy (mocny)", self.rl), ("Silnik prawy (delikatny)", self.rr)):
@@ -203,7 +235,6 @@ class ControllersPage(Page):
             _slider(rw, var).pack(side="left", padx=8)
         self.led = tk.BooleanVar(value=self.cfg["mic_led"])
         self.keep = tk.BooleanVar(value=self.cfg["keep"])
-        self.auto_trig = tk.BooleanVar(value=self.cfg["auto_triggers"])
         w.switch(ac, "Dioda wyciszenia mikrofonu świeci", variable=self.led).pack(anchor="w", padx=22, pady=(8, 16))
 
         kc = w.card(body)
@@ -212,10 +243,7 @@ class ControllersPage(Page):
         w.switch(kc, "Pilnuj koloru - przywracaj go, gdy coś go zmieni", variable=self.keep).pack(anchor="w", padx=22, pady=4)
         w.label(kc, "Pasek pada wraca do domyślnego po usypieniu Bluetooth albo gdy ustawi go inny program. Aplikacja odświeża kolor co kilka sekund, "
                 "nie rusząc wibracji w grach ani głośności.", "small", c.muted, wraplength=700).pack(fill="x", padx=60)
-        w.switch(kc, "Automatyczna siła spustów zależnie od gry", variable=self.auto_trig).pack(anchor="w", padx=22, pady=(10, 4))
-        w.label(kc, "Gdy działa gra wyścigowa (np. Forza, Motor Town, ETS2): lewy spust jak hamulec, prawy lekki jak gaz. W strzelankach: "
-                "prawy jak spust broni. Po zamknięciu gry wracają Twoje ustawienia. Tylko DualSense (PS5).", "small", c.muted,
-                wraplength=700).pack(fill="x", padx=60, pady=(0, 16))
+        w.label(kc, "", "small", c.muted).pack(pady=(0, 6))
 
         bar = ctk.CTkFrame(body, fg_color="transparent", height=1)
         bar.pack(fill="x", pady=(14, 20))
@@ -298,10 +326,36 @@ class ControllersPage(Page):
             self.batt_bar.set(b["percent"] / 100)
         self.app.bg.run(work, done)
 
+    def _save_alerts(self) -> None:
+        low = self.al_low.get()
+        self.app.settings.set("pad_alerts", {
+            "enabled": self.al_on.get(), "full": self.al_full.get(),
+            "drop": int(self.al_drop.get().rstrip("%")), "low": 0 if low == "wyłączone" else int(low.rstrip("%"))})
+
+    def _refresh_status(self) -> None:
+        from ... import padbattery as pb
+        watch = getattr(self.app, "pad_watch", None)
+        if watch:
+            self.est.configure(text=pb.describe(watch.tracker), text_color=c.text if watch.tracker.minutes_left() else c.muted)
+        keeper = getattr(self.app, "pad_keeper", None)
+        try:
+            ov = gp.trigger_overrides(keeper._get_games()) if keeper else {}
+        except Exception:
+            ov = {}
+        if not self.auto_trig.get():
+            txt = "Automatyka wyłączona - spusty mają Twoje ręczne ustawienia."
+        elif ov:
+            txt = "● Wykryto grę - spusty ustawione automatycznie (" + ("wyścigi" if ov.get("trigger_right") == "rigid" else "strzelanka") + ")."
+        else:
+            txt = "Czekam na grę - żadna znana gra nie jest teraz uruchomiona."
+        self.auto_state.configure(text=txt)
+
     def _poll_battery(self) -> None:
-        if self.app.current_page_id() == "controllers" and self.pads and not self.app.settings.get("_pad_busy"):
+        self._refresh_status()
+        self._tick = getattr(self, "_tick", 0) + 1
+        if self._tick % 4 == 0 and self.app.current_page_id() == "controllers" and self.pads and not self.app.settings.get("_pad_busy"):
             self.update_battery()
-        self.after(20000, self._poll_battery)
+        self.after(5000, self._poll_battery)
 
     def _current_quiet(self):
         if not self.pads:

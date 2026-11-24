@@ -5,6 +5,7 @@ import math
 import threading
 import time
 import tkinter as tk
+import tkinter.filedialog as fd
 
 import customtkinter as ctk
 
@@ -12,6 +13,7 @@ from ... import speedtest as st
 from .. import theme, widgets as w
 from ..app import Page
 from ..theme import c
+from ...version import VERSION
 
 PHASES = {"ping": "Mierzę opóźnienie…", "down": "Test pobierania…", "up": "Test wysyłania…", "done": "Gotowe"}
 GAUGE_MAX = (50, 100, 250, 500, 1000, 2500)
@@ -82,6 +84,26 @@ class SpeedPage(Page):
         self.btn = w.button(row, "Start", self.toggle, "primary", height=42, width=200)
         self.btn.pack()
 
+        cx = w.card(body)
+        cx.pack(fill="x", pady=(14, 0))
+        w.label(cx, "Powiedz nam coś o swoim łączu (nieobowiązkowe)", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(16, 2))
+        w.label(cx, "Dzięki temu porady są trafniejsze, a raport dla dostawcy internetu zawiera wszystko, o co zwykle pytają.",
+                "small", c.muted, wraplength=800).pack(fill="x", padx=22)
+        crow = ctk.CTkFrame(cx, fg_color="transparent")
+        crow.pack(fill="x", padx=22, pady=(8, 16))
+        self.ctx = {}
+        for i, (key, label, vals) in enumerate((
+                ("conn", "Jak jesteś połączony?", ["Wykryj sam", "Kabel", "Wi-Fi"]),
+                ("others", "Ktoś jeszcze korzysta z internetu?", ["Nie wiem", "tak", "nie"]),
+                ("restarted", "Restartowałeś router?", ["Nie wiem", "tak", "nie"]))):
+            col = ctk.CTkFrame(crow, fg_color="transparent")
+            col.grid(row=0, column=i, padx=(0, 18), sticky="w")
+            w.label(col, label, "small", c.muted).pack(anchor="w")
+            om = w.option_menu(col, vals, width=170)
+            om.pack(anchor="w", pady=(3, 0))
+            self.ctx[key] = om
+        self.last = None
+
         grid = ctk.CTkFrame(body, fg_color="transparent")
         grid.pack(fill="x", pady=(14, 0))
         self.tiles = {}
@@ -102,6 +124,17 @@ class SpeedPage(Page):
         self.grade_box = ctk.CTkFrame(gc, fg_color="transparent")
         self.grade_box.pack(fill="x", padx=22, pady=(0, 16))
         w.label(self.grade_box, "Wyniki pojawią się po teście.", "small", c.muted).pack(anchor="w")
+
+        self.adv_card = w.card(body)
+        self.adv_card.pack(fill="x", pady=(14, 0))
+        w.label(self.adv_card, "Co możesz zrobić", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 6))
+        self.adv_box = ctk.CTkFrame(self.adv_card, fg_color="transparent")
+        self.adv_box.pack(fill="x", padx=22, pady=(0, 12))
+        w.label(self.adv_box, "Porady pojawią się po teście.", "small", c.muted).pack(anchor="w")
+        arow = ctk.CTkFrame(self.adv_card, fg_color="transparent")
+        arow.pack(fill="x", padx=22, pady=(0, 16))
+        w.button(arow, "Zapisz raport dla dostawcy", self.save_report, "primary", height=36, width=220).pack(side="left")
+        w.button(arow, "Skopiuj raport", self.copy_report, "ghost", height=36, width=150).pack(side="left", padx=8)
 
         hc = w.card(body)
         hc.pack(fill="x", pady=(14, 20))
@@ -128,7 +161,9 @@ class SpeedPage(Page):
             self.after(0, lambda: self._phase(name, prog, speed))
 
         def work():
+            info = st.connection_info()
             res = st.run(on_phase, stop)
+            res["_info"] = info
             self.after(0, lambda: self._finish(res))
         threading.Thread(target=work, daemon=True).start()
 
@@ -162,11 +197,61 @@ class SpeedPage(Page):
             col = c.success if val in ("Świetnie", "Brak problemu") else (c.warning if val in ("Dobrze", "Lekki") else c.danger)
             w.label(r, name, "body", c.text, width=240).pack(side="left")
             w.label(r, val, "body", col, "bold").pack(side="left")
+        self._show_advice(res)
         if not self.stop.is_set():
             hist = list(self.app.settings.get("speed_history") or [])
             hist.append({k: res.get(k) for k in ("time", "down", "up", "ping", "jitter", "loss", "loaded_ping")})
             self.app.settings.set("speed_history", hist[-12:])
             self._render_history()
+
+    def _context(self) -> dict:
+        out = {}
+        for k, om in self.ctx.items():
+            v = om.get()
+            if v not in ("Wykryj sam", "Nie wiem"):
+                out[k] = v
+        return out
+
+    def _show_advice(self, res: dict) -> None:
+        info = res.get("_info") or {}
+        ctx = self._context()
+        self.last = (res, info, ctx)
+        for ch in self.adv_box.winfo_children():
+            ch.destroy()
+        for a in st.advice(res, info, ctx):
+            r = ctk.CTkFrame(self.adv_box, fg_color=theme.blend(c.card, "#FFFFFF", 0.05), corner_radius=10)
+            r.pack(fill="x", pady=4)
+            w.label(r, a["title"], "body", c.text, "bold").pack(fill="x", padx=14, pady=(10, 0))
+            w.label(r, a["text"], "small", c.muted, wraplength=820).pack(fill="x", padx=14, pady=(2, 10 if not a["page"] else 4))
+            if a["page"]:
+                w.button(r, "Przejdź tam →", lambda p=a["page"]: self.app.show_page(p), "ghost", height=30, width=140).pack(anchor="w", padx=14, pady=(0, 10))
+
+    def _report(self) -> str:
+        if not self.last:
+            return ""
+        res, info, ctx = self.last
+        return st.report_text(res, info, ctx, VERSION)
+
+    def save_report(self) -> None:
+        txt = self._report()
+        if not txt:
+            self.app.toast.show("Najpierw zrób test.", "warn")
+            return
+        path = fd.asksaveasfilename(title="Zapisz raport", defaultextension=".txt", initialfile="raport-internet.txt",
+                                    filetypes=[("Tekst", "*.txt")])
+        if path:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(txt)
+            self.app.toast.show("Raport zapisany. Dołącz go do zgłoszenia u dostawcy.", "ok")
+
+    def copy_report(self) -> None:
+        txt = self._report()
+        if not txt:
+            self.app.toast.show("Najpierw zrób test.", "warn")
+            return
+        self.clipboard_clear()
+        self.clipboard_append(txt)
+        self.app.toast.show("Raport skopiowany - wklej go w czacie lub mailu do dostawcy.", "ok")
 
     def _render_history(self) -> None:
         for ch in self.hist.winfo_children():

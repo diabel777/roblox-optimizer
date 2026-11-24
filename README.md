@@ -110,6 +110,15 @@ Dwuklik na `ZBUDUJ.bat` (albo `ZBUDUJ.bat "opis zmian"` w cmd). Skrypt sam znajd
 Klucz podpisu jest kopiowany do `%USERPROFILE%\POU-keys` - poza projektem, więc skasowanie folderu projektu go nie usuwa.
 Skrypt nigdy nie generuje nowego klucza sam (nowy klucz = zainstalowane aplikacje odrzucą aktualizacje).
 
+## Nowości w 4.7
+
+- **Logo wszędzie** - ikona .exe, paska zadań i skrótów to teraz Twoje logo (wcześniej budowanie nadpisywało je piorunem).
+- **Test internetu**: pytania o kabel/Wi-Fi, porady „co możesz zrobić" z przejściem do odpowiedniej strony, raport dla dostawcy (zapis / kopiowanie).
+- **Pady**: alerty baterii (spadek o N%, niski poziom, naładowany) także z zegara, szacunek czasu pracy i ładowania, widoczny status automatycznych spustów.
+- **Działa samo**: RAM wg progu, co X minut albo oba; automatyczne szybkie skanowanie antywirusem.
+- **Ochrona**: ocena bezpieczeństwa 0-100 z listą rzeczy do poprawy; czytelne komunikaty błędów.
+- **Motywy** zapisują się także przy własnym theme.json.
+
 ## Nowości w 4.6
 
 - **Test internetu** - ping, jitter, utrata pakietów, pobieranie, wysyłanie i opóźnienie pod obciążeniem, z oceną dla gier/wideo/streamingu.

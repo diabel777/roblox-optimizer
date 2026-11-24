@@ -151,36 +151,29 @@ class SettingsPage(Page):
         app.on_update_change(self._sync)
         self._sync()
 
-    def apply_theme(self, key: str) -> None:
-        th = THEMES[key]
+    def _write_theme(self, **changes) -> None:
+        """Dopisuje nasze zmiany do theme.json, zachowując resztę Twoich ustawień (czcionki, rozmiary okna)."""
         cfgdir = paths.config_dir()
         cfgdir.mkdir(parents=True, exist_ok=True)
         f = cfgdir / "theme.json"
         try:
             cur = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+            if not isinstance(cur, dict):
+                cur = {}
         except (OSError, ValueError):
             cur = {}
-        if cur and "_aderis_theme" not in cur:
-            self.app.toast.show("Masz własny plik theme.json - nie nadpisuję go. Usuń go, jeśli chcesz użyć motywów.", "warn", 6000)
-            return
-        cur = {"_aderis_theme": key, "colors": th["colors"], "animations": self.anim_var.get()}
-        f.write_text(json.dumps(cur, indent=1), encoding="utf-8")
+        if "colors" in changes:
+            cur["colors"] = {**(cur.get("colors") or {}), **changes.pop("colors")}
+        cur.update(changes)
+        f.write_text(json.dumps(cur, indent=1, ensure_ascii=False), encoding="utf-8")
+
+    def apply_theme(self, key: str) -> None:
+        self._write_theme(colors=THEMES[key]["colors"], _aderis_theme=key)
         self.app.toast.show("Zapisano. Uruchamiam aplikację ponownie…", "ok")
         self.after(900, self.app.restart_now)
 
     def toggle_anim(self) -> None:
-        f = paths.config_dir() / "theme.json"
-        try:
-            cur = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
-        except (OSError, ValueError):
-            cur = {}
-        if cur and "_aderis_theme" not in cur:
-            self.app.toast.show("Masz własny theme.json - animacje wyłączysz w nim ręcznie.", "warn")
-            return
-        cur.setdefault("_aderis_theme", "aderis")
-        cur["animations"] = bool(self.anim_var.get())
-        cur.setdefault("colors", THEMES[cur["_aderis_theme"]]["colors"] if cur["_aderis_theme"] in THEMES else {})
-        f.write_text(json.dumps(cur, indent=1), encoding="utf-8")
+        self._write_theme(animations=bool(self.anim_var.get()))
         anim.set_enabled(self.anim_var.get())
 
     def purge_all(self) -> None:

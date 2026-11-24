@@ -95,10 +95,13 @@ class App(ctk.CTk):
             pass
         ico = paths.resource_dir() / "assets" / "icon.ico"
         if ico.exists():
-            try:
-                self.iconbitmap(str(ico))
-            except Exception:
-                pass
+            def _set_icon():
+                try:
+                    self.iconbitmap(str(ico))
+                except Exception:
+                    pass
+            _set_icon()
+            self.after(300, _set_icon)      # customtkinter podmienia ikonę po ~200 ms - ustawiamy ją jeszcze raz
 
     def report_callback_exception(self, exc, val, tb):  # błąd w callbacku nie może zabić aplikacji
         log.error("Nieobsłużony wyjątek w UI", exc_info=(exc, val, tb))
@@ -292,6 +295,14 @@ class App(ctk.CTk):
             return cache["ids"]
         self.pad_keeper = gamepad.Keeper(lambda: self.settings.get("pad"), games)
         self.pad_keeper.start()
+        from .. import padbattery
+
+        def alert(msg: str) -> None:
+            self.after(0, lambda: self.toast.show(msg, "warn", 6000))
+            if getattr(self, "tray", None):
+                self.tray.notify(msg, APP_NAME)
+        self.pad_watch = padbattery.Watcher(lambda: self.settings.get("pad_alerts"), alert)
+        self.pad_watch.start()
 
     def _periodic_update(self) -> None:
         if self.update_state in ("idle", "uptodate", "error"):
@@ -365,6 +376,8 @@ class App(ctk.CTk):
         try:
             if getattr(self, "pad_keeper", None):
                 self.pad_keeper.stop()
+            if getattr(self, "pad_watch", None):
+                self.pad_watch.stop()
             if self.tray:
                 self.tray.stop()
         except Exception:

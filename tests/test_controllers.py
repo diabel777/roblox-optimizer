@@ -139,3 +139,33 @@ def test_speedtest_math_and_grading():
     bad = st.grade({"ping": 150, "jitter": 40, "loss": 5, "down": 5, "up": 1, "loaded_ping": 400})
     assert bad["Gry online"] == "Słabo" and "QoS" in bad["Opóźnienie pod obciążeniem"]
     assert st.HOST == "speed.cloudflare.com" and st.DOWN.startswith("https://")
+
+
+def test_battery_tracker_alerts_and_estimates():
+    from pro_optimizer import padbattery as pb
+    t = pb.Tracker()
+    cfg = {"enabled": True, "drop": 5, "low": 15}
+    t.add(80, "discharging", 0)
+    assert t.alerts(cfg) == []
+    t.add(74, "discharging", 600)
+    assert any("74" in m for m in t.alerts(cfg))
+    assert t.alerts(cfg) == []                       # ten sam alert nie powtarza się
+    assert t.minutes_left() == round(74 / (6 / 10))
+    t.add(14, "discharging", 6000)
+    assert any("Niski" in m for m in t.alerts(cfg))
+    t.add(15, "charging", 6100)
+    t.add(40, "charging", 7000)
+    assert t.minutes_left() and t.minutes_left() > 0
+    assert pb.sanitize_alerts({"drop": "x", "low": 999})["low"] == 50
+
+
+def test_ram_automation_modes():
+    from pro_optimizer import automation as au
+    base = {"ram": {"enabled": True, "threshold_pct": 80, "min_interval_min": 5, "interval_min": 10, "mode": "interval"}}
+    assert au.plan(base, 1000, {"ram": 0}, 10, [], set()) == ["ram"]          # minęło 10 min, RAM niski -> czas
+    assert au.plan(base, 100, {"ram": 0}, 99, [], set()) == []                 # tryb czasu ignoruje próg
+    base["ram"]["mode"] = "threshold"
+    assert au.plan(base, 1000, {"ram": 0}, 10, [], set()) == []
+    assert au.plan(base, 1000, {"ram": 0}, 90, [], set()) == ["ram"]
+    base["ram"]["mode"] = "both"
+    assert au.plan(base, 1000, {"ram": 0}, 10, [], set()) == ["ram"]

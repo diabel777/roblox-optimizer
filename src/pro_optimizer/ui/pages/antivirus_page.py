@@ -25,9 +25,68 @@ def _ago(dt) -> str:
     return f"{int(d // 86400)} dni temu"
 
 
+class Ring(tk.Canvas):
+    """Pierścień oceny ochrony 0-100 (rysowany, bez emoji)."""
+
+    def __init__(self, master, size=92):
+        super().__init__(master, width=size, height=size, bg=c.card, highlightthickness=0)
+        self.size, self.value, self.color = size, 0, c.muted
+        self.draw()
+
+    def set(self, value: int, color: str) -> None:
+        self.value, self.color = value, color
+        self.draw()
+
+    def draw(self) -> None:
+        self.delete("all")
+        s, p = self.size, 8
+        self.create_oval(p, p, s - p, s - p, outline=theme.blend(c.card, "#FFFFFF", 0.1), width=8)
+        if self.value > 0:
+            self.create_arc(p, p, s - p, s - p, start=90, extent=-3.6 * self.value, style="arc", outline=self.color, width=8)
+        self.create_text(s / 2, s / 2 - 5, text=str(self.value), fill=c.text, font=theme.font("title", "bold"))
+        self.create_text(s / 2, s / 2 + 17, text="/ 100", fill=c.muted, font=theme.font("small"))
+
+
+def security_score(s, harden: dict, unsigned: int | None) -> tuple[int, list[str]]:
+    """Ocena 0-100 z konkretnych sprawdzeń. Zwraca (punkty, lista rzeczy do poprawy)."""
+    todo: list[str] = []
+    pts = 0
+    if s.available and s.antivirus and s.realtime:
+        pts += 35
+    else:
+        todo.append("Włącz ochronę w czasie rzeczywistym w Zabezpieczeniach Windows.")
+    age = s.sig_age_days if s.available else None
+    if age is not None and age <= 3:
+        pts += 15
+    else:
+        todo.append("Zaktualizuj definicje wirusów.")
+    if s.available and s.quick_scan is not None:
+        pts += 10
+    else:
+        todo.append("Zrób szybkie skanowanie.")
+    if s.available and s.tamper:
+        pts += 10
+    else:
+        todo.append("Włącz ochronę przed manipulacją.")
+    if harden:
+        on = sum(1 for k in defender.HARDEN_ITEMS if harden.get(k))
+        pts += round(25 * on / len(defender.HARDEN_ITEMS))
+        if on < len(defender.HARDEN_ITEMS):
+            todo.append("Włącz dodatkowe tarcze w sekcji „Wzmocnij ochronę”.")
+    else:
+        pts += 10
+    if unsigned is not None:
+        pts += 5 if unsigned == 0 else 0
+        if unsigned:
+            todo.append(f"{unsigned} programów w autostarcie jest niepodpisanych - sprawdź je w sekcji Autostart.")
+    else:
+        pts += 3
+    return min(100, pts), todo
+
+
 class AntivirusPage(Page):
     title = "Ochrona"
-    subtitle = "Ochrona przed wirusami oparta o Microsoft Defender - wygodny panel zamiast ukrytych okien Windows."
+    subtitle = "Ocena bezpieczeństwa komputera, skanowanie i tarcze - na silniku Microsoft Defender, bez dodatkowych sterowników."
 
     def __init__(self, master, app):
         super().__init__(master, app)
@@ -40,7 +99,7 @@ class AntivirusPage(Page):
         sc.grid(row=0, column=0, sticky="ew")
         top = ctk.CTkFrame(sc, fg_color="transparent", height=1)
         top.pack(fill="x", padx=22, pady=(18, 4))
-        self.shield = ctk.CTkLabel(top, text="🛡", font=ctk.CTkFont(size=34), width=56)
+        self.shield = Ring(top)
         self.shield.pack(side="left")
         tx = ctk.CTkFrame(top, fg_color="transparent", height=1)
         tx.pack(side="left", padx=10)
@@ -105,6 +164,18 @@ class AntivirusPage(Page):
         self.audit_box = ctk.CTkFrame(ac, fg_color="transparent", height=1)
         self.audit_box.pack(fill="x", padx=22, pady=(8, 16))
         self._loaded = False
+        self._harden: dict = {}
+        self._unsigned = None
+        self._status = None
+
+    def _rescore(self) -> None:
+        if not self._status or not self._status.available:
+            return
+        pts, todo = security_score(self._status, self._harden, self._unsigned)
+        col = c.success if pts >= 85 else (c.warning if pts >= 60 else c.danger)
+        self.shield.set(pts, col)
+        if todo:
+            self.state_sub.configure(text="Do poprawy: " + "  •  ".join(todo[:3]))
 
     def load_harden(self) -> None:
         def done(res):
@@ -117,6 +188,8 @@ class AntivirusPage(Page):
             for k, v in d.items():
                 if k in self.h_vars:
                     self.h_vars[k].set(not v)
+            self._harden = d
+            self._rescore()
         self.app.bg.run(defender.harden_status, done)
 
     def do_harden(self) -> None:
@@ -134,6 +207,7 @@ class AntivirusPage(Page):
         if not self._loaded:
             self._loaded = True
             self.refresh()
+            self.audit()
 
     def _busy(self, on: bool, text: str = "") -> None:
         self.busy = on
@@ -149,6 +223,7 @@ class AntivirusPage(Page):
 
     def refresh(self) -> None:
         def done(s):
+            self._status = s
             for ch in self.facts.winfo_children():
                 ch.destroy()
             if not s.available:
@@ -157,7 +232,7 @@ class AntivirusPage(Page):
                 return
             ok = s.antivirus and s.realtime
             self.state.configure(text="Komputer jest chroniony" if ok else "Ochrona wymaga uwagi", text_color=c.success if ok else c.danger)
-            self.state_sub.configure(text="Ochrona w czasie rzeczywistym działa." if s.realtime else "Ochrona w czasie rzeczywistym jest WYŁĄCZONA - włącz ją w Zabezpieczeniach Windows.")
+            self.state_sub.configure(text="Ochrona w czasie rzeczywistym działa. Silnik: Microsoft Defender - ten sam, który testują niezależne laboratoria." if s.realtime else "Ochrona w czasie rzeczywistym jest WYŁĄCZONA - włącz ją w Zabezpieczeniach Windows.")
             age = s.sig_age_days
             for name, val, good in (
                 ("Ochrona w czasie rzeczywistym", "włączona" if s.realtime else "wyłączona", s.realtime),
@@ -171,8 +246,10 @@ class AntivirusPage(Page):
                 ctk.CTkLabel(line, text="●", width=14, text_color=c.success if good else c.warning).pack(side="left")
                 w.label(line, name, "small", c.muted, width=230).pack(side="left", padx=4)
                 w.label(line, val, "small", c.text).pack(side="left")
+            self._rescore()
         self.app.bg.run(defender.status, done)
         self.load_threats()
+        self.load_harden()
 
     def load_threats(self) -> None:
         def done(res):
@@ -235,6 +312,8 @@ class AntivirusPage(Page):
             if not ok:
                 w.label(self.audit_box, "Nie udało się odczytać autostartu.", "small", c.warning).pack(fill="x")
                 return
+            self._unsigned = sum(1 for it in items if it.get("sig") not in ("Valid", "nieznany"))
+            self._rescore()
             if not items:
                 w.label(self.audit_box, "Brak programów w autostarcie.", "small", c.muted).pack(fill="x")
             for it in items:

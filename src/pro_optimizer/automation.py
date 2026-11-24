@@ -10,18 +10,19 @@ from typing import Callable, Optional
 log = logging.getLogger(__name__)
 
 DEFAULTS: dict = {
-    "ram": {"enabled": False, "threshold_pct": 85, "min_interval_min": 10},
+    "ram": {"enabled": False, "threshold_pct": 85, "min_interval_min": 10, "mode": "threshold", "interval_min": 15},
     "dns": {"enabled": False, "interval_hours": 6},
     "clean": {"enabled": False, "interval_hours": 24},
     "tweaks": {"enabled": False, "interval_hours": 6},
     "defender": {"enabled": False, "interval_hours": 12},
+    "scan": {"enabled": False, "interval_hours": 24},
     "game_boost": {"enabled": True},
     "app_opt": {"enabled": True},
 }
 
 TASK_LABELS = {
     "ram": "Zwolnienie pamięci RAM", "dns": "Wyczyszczenie DNS", "clean": "Czyszczenie cache aplikacji",
-    "tweaks": "Pilnowanie optymalizacji Windows", "defender": "Aktualizacja definicji antywirusa",
+    "tweaks": "Pilnowanie optymalizacji Windows", "scan": "Szybkie skanowanie antywirusem", "defender": "Aktualizacja definicji antywirusa",
     "game_boost": "Doping uruchomionej gry", "app_opt": "Optymalizacja aplikacji w tle",
 }
 
@@ -44,11 +45,14 @@ def plan(cfg: dict, now: float, last: dict, ram_used_pct: Optional[float], games
         return now - float(last.get(name, 0))
 
     r = cfg["ram"]
-    if r["enabled"] and ram_used_pct is not None and ram_used_pct >= r["threshold_pct"] \
-            and elapsed("ram") >= r["min_interval_min"] * 60:
-        due.append("ram")
+    if r["enabled"]:
+        mode = r.get("mode", "threshold")
+        by_pct = ram_used_pct is not None and ram_used_pct >= r["threshold_pct"] and elapsed("ram") >= r["min_interval_min"] * 60
+        by_time = elapsed("ram") >= max(1.0, float(r.get("interval_min", 15))) * 60
+        if (mode == "threshold" and by_pct) or (mode == "interval" and by_time) or (mode == "both" and (by_pct or by_time)):
+            due.append("ram")
     for name, key in (("dns", "interval_hours"), ("clean", "interval_hours"),
-                      ("tweaks", "interval_hours"), ("defender", "interval_hours")):
+                      ("tweaks", "interval_hours"), ("defender", "interval_hours"), ("scan", "interval_hours")):
         c = cfg[name]
         if c["enabled"] and elapsed(name) >= max(0.25, float(c[key])) * 3600:
             due.append(name)
@@ -100,6 +104,9 @@ def run_task(name: str, settings, catalog: list[dict], games: list[dict], runnin
         return True, ("przywrócono: " + ", ".join(fixed)) if fixed else "wszystko już ustawione"
     if name == "defender":
         return defender.update_signatures()
+    if name == "scan":
+        ok, msg = defender.scan("quick")
+        return ok, msg
     if name == "app_opt":
         from . import appopt
         if not gm.running_game_exes(games, running):

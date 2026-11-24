@@ -19,13 +19,15 @@ def _hours(h: float) -> str:
 
 HOUR_CHOICES = {
     "dns": [1, 3, 6, 12, 24], "clean": [6, 12, 24, 72, 168], "tweaks": [1, 3, 6, 12, 24], "defender": [6, 12, 24],
+    "scan": [12, 24, 72, 168],
 }
 ROWS = [
-    ("ram", "Automatyczne zwalnianie RAM", "Gdy zajęta pamięć przekroczy próg, aplikacja zmniejsza zestawy robocze procesów (poza Robloxem)."),
+    ("ram", "Automatyczne zwalnianie RAM", "Zwalnia nieużywaną pamięć: gdy RAM przekroczy wybrany próg, co ustaloną liczbę minut albo oba naraz. Niczego nie zamyka, nie rusza Robloxa."),
     ("dns", "Automatyczne czyszczenie DNS", "Czyści pamięć podręczną DNS - pomaga, gdy strony i gry online źle się łączą."),
     ("clean", "Automatyczne czyszczenie cache", "Czyści cache aplikacji zaznaczonych domyślnie na stronie Czyszczenie (uruchomione aplikacje są pomijane)."),
     ("tweaks", "Automatyczna optymalizacja Windows", "Pilnuje, żeby plan zasilania, tryb gry i wyłączone nagrywanie w tle nie wróciły do ustawień Windows."),
     ("defender", "Automatyczna aktualizacja antywirusa", "Pobiera najnowsze definicje Microsoft Defendera."),
+    ("scan", "Automatyczne skanowanie antywirusem", "Robi szybkie skanowanie w tle (np. raz dziennie), żeby zagrożenia były wychwycone bez Twojej pamięci o tym."),
     ("app_opt", "Optymalizacja aplikacji w tle", "Gdy działa gra, przeglądarki, Discord, Spotify i launchery dostają niższy priorytet, a po grze wracają do normy. Niczego nie zamyka."),
     ("game_boost", "Automatyczny doping gier", "Gdy wykryta gra się uruchomi: podnosi jej priorytet i zwalnia pamięć. Szczegóły ustawisz w każdej grze osobno."),
 ]
@@ -59,6 +61,14 @@ class AutomationPage(Page):
                                      command=lambda val: self._set("ram", "threshold_pct", int(val.split()[1].rstrip("%"))))
                 menu.set(f"próg {cfg['ram']['threshold_pct']}%")
                 menu.pack(side="right", padx=(0, 4))
+                mins = {"co 5 min": 5, "co 10 min": 10, "co 15 min": 15, "co 30 min": 30, "co 60 min": 60}
+                mm = w.option_menu(right, list(mins), width=110, command=lambda val: self._set("ram", "interval_min", mins[val]))
+                mm.set(next((k for k, v in mins.items() if v == cfg["ram"]["interval_min"]), "co 15 min"))
+                mm.pack(side="right", padx=(0, 4))
+                modes = {"gdy RAM ≥ próg": "threshold", "co X minut": "interval", "próg LUB czas": "both"}
+                md = w.option_menu(right, list(modes), width=140, command=lambda val: self._set("ram", "mode", modes[val]))
+                md.set(next((k for k, v in modes.items() if v == cfg["ram"].get("mode", "threshold")), "gdy RAM ≥ próg"))
+                md.pack(side="right", padx=(0, 4))
             elif key in HOUR_CHOICES:
                 labels = {_hours(h): h for h in HOUR_CHOICES[key]}
                 menu = w.option_menu(right, list(labels), width=150,
