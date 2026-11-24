@@ -134,8 +134,22 @@ def run_gui(opts: install.InstallOptions, on_ready=None) -> int:
         def header(self, title: str, sub: str):
             row = ctk.CTkFrame(self.body, fg_color="transparent")
             row.pack(fill="x")
-            ctk.CTkLabel(row, text="⚡", width=64, height=64, corner_radius=18, fg_color=c.accent, text_color="#FFFFFF",
-                         font=ctk.CTkFont(size=30)).pack(side="left")
+            img = None
+            try:
+                from PIL import Image
+                ico = install.find_payload("icon.ico")
+                if ico:
+                    big = Image.open(ico)
+                    big.size = max(big.info.get("sizes", {(256, 256)}))
+                    img = ctk.CTkImage(big.convert("RGBA"), size=(64, 64))
+                    self._hdr_img = img
+            except Exception:
+                img = None
+            if img:
+                ctk.CTkLabel(row, text="", image=img, width=64, height=64).pack(side="left")
+            else:
+                ctk.CTkLabel(row, text="⚡", width=64, height=64, corner_radius=18, fg_color=c.accent, text_color="#FFFFFF",
+                             font=ctk.CTkFont(size=30)).pack(side="left")
             col = ctk.CTkFrame(row, fg_color="transparent")
             col.pack(side="left", padx=16)
             w.label(col, title, "title", c.text, "bold").pack(anchor="w")

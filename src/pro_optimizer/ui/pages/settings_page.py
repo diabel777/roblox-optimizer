@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import tkinter as tk
 import tkinter.filedialog as fd
 
 import customtkinter as ctk
@@ -10,9 +11,25 @@ from ... import automation, fan as fanmod, paths, profiles, winsys
 from ...security import DEFAULT_HOSTS
 from ...update_key import PUBLIC_KEY_HEX
 from ...version import APP_NAME, VERSION
-from .. import theme, widgets as w
+from .. import anim, theme, widgets as w
 from ..app import Page
 from ..theme import c, font
+
+
+THEMES = {
+    "aderis": {"name": "Aderis", "colors": {"bg": "#0A0B14", "sidebar": "#0E0F1B", "card": "#14152A", "card_hover": "#1B1C36",
+               "border": "#26274A", "accent": "#8B5CF6", "accent_hover": "#A78BFA", "accent2": "#C084FC"}},
+    "ocean": {"name": "Ocean", "colors": {"bg": "#08111A", "sidebar": "#0B1622", "card": "#0F1D2C", "card_hover": "#142739",
+              "border": "#1B3147", "accent": "#0EA5E9", "accent_hover": "#38BDF8", "accent2": "#22D3EE"}},
+    "aurora": {"name": "Aurora", "colors": {"bg": "#08140F", "sidebar": "#0B1A14", "card": "#0F2119", "card_hover": "#142B21",
+               "border": "#1B3A2D", "accent": "#10B981", "accent_hover": "#34D399", "accent2": "#2DD4BF"}},
+    "sunset": {"name": "Zachód", "colors": {"bg": "#150C0C", "sidebar": "#1B0F0F", "card": "#241414", "card_hover": "#2E1A1A",
+               "border": "#442424", "accent": "#F97316", "accent_hover": "#FB923C", "accent2": "#F43F5E"}},
+    "rose": {"name": "Róż", "colors": {"bg": "#14090F", "sidebar": "#1A0C14", "card": "#23101C", "card_hover": "#2D1524",
+             "border": "#44203A", "accent": "#EC4899", "accent_hover": "#F472B6", "accent2": "#A78BFA"}},
+    "oled": {"name": "OLED", "colors": {"bg": "#000000", "sidebar": "#050505", "card": "#0C0C0E", "card_hover": "#141417",
+             "border": "#1E1E24", "accent": "#8B5CF6", "accent_hover": "#A78BFA", "accent2": "#22D3EE"}},
+}
 
 
 class SettingsPage(Page):
@@ -65,9 +82,53 @@ class SettingsPage(Page):
         w.button(prow, "Zapisz mój profil do pliku", self.export_profile, "primary", width=220).pack(side="left")
         w.button(prow, "Wczytaj profil z pliku", self.import_profile, "ghost", width=190).pack(side="left", padx=8)
 
+        # --- praca w tle
+        bc = w.card(body)
+        bc.grid(row=3, column=0, sticky="ew", pady=(14, 0))
+        w.label(bc, "Praca w tle", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 4))
+        w.label(bc, "Po zamknięciu okna aplikacja zostaje przy zegarze i dalej działa: automatyka, doping gier, kolor pada i "
+                    "aktualizacje. Pełne wyjście: prawy przycisk na ikonie → Zakończ całkowicie.", "small", c.muted,
+                wraplength=700).pack(fill="x", padx=22)
+        from ... import background
+        self.bg_var = tk.BooleanVar(value=bool(app.settings.get("background", True)))
+        self.auto_var = tk.BooleanVar(value=background.autostart_enabled())
+        w.switch(bc, "Działaj w tle po zamknięciu okna", variable=self.bg_var,
+                 command=lambda: app.settings.set("background", self.bg_var.get())).pack(anchor="w", padx=22, pady=(10, 2))
+        w.switch(bc, "Uruchamiaj razem z Windows (od razu w tle)", variable=self.auto_var,
+                 command=lambda: (background.set_autostart(self.auto_var.get()) or None)).pack(anchor="w", padx=22, pady=(2, 16))
+
+        # --- wygląd
+        ac = w.card(body)
+        ac.grid(row=4, column=0, sticky="ew", pady=(14, 0))
+        w.label(ac, "Wygląd i tło", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 4))
+        w.label(ac, "Wybierz motyw kolorów. Aplikacja uruchomi się ponownie, żeby go zastosować.", "small", c.muted).pack(fill="x", padx=22)
+        tr = ctk.CTkFrame(ac, fg_color="transparent")
+        tr.pack(fill="x", padx=22, pady=(10, 4))
+        for i, (key, th) in enumerate(THEMES.items()):
+            col = ctk.CTkFrame(tr, fg_color="transparent")
+            col.grid(row=0, column=i, padx=5)
+            sw = ctk.CTkButton(col, text="", width=74, height=46, corner_radius=12, fg_color=th["colors"]["card"],
+                               hover_color=th["colors"]["card_hover"], border_width=3, border_color=th["colors"]["accent"],
+                               command=lambda k=key: self.apply_theme(k))
+            sw.pack()
+            w.label(col, th["name"], "small", c.muted).pack(pady=(3, 0))
+        self.anim_var = tk.BooleanVar(value=anim.enabled())
+        w.switch(ac, "Animacje interfejsu", variable=self.anim_var, command=self.toggle_anim).pack(anchor="w", padx=22, pady=(10, 16))
+
+        # --- całkowite usunięcie
+        dc = w.card(body, border_color=theme.blend(c.card, c.danger, 0.5))
+        dc.grid(row=5, column=0, sticky="ew", pady=(14, 0))
+        w.label(dc, "Usuń całkowicie", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 4))
+        w.label(dc, "Cofa wszystkie zmiany, które aplikacja zrobiła w Windows i w plikach gier (o ile da się je cofnąć), a potem kasuje "
+                    "aplikację razem z ustawieniami, kopiami zapasowymi, logami, skrótami, wpisem w Aplikacjach i autostartem. "
+                    "Nic z niej nie zostaje. Tego nie można cofnąć.", "small", c.muted, wraplength=700).pack(fill="x", padx=22)
+        self.purge_out = w.label(dc, "", "small", c.muted, wraplength=700)
+        self.purge_out.pack(fill="x", padx=22)
+        w.button(dc, "Usuń aplikację i wszystkie pliki", self.purge_all, "danger", height=38, width=260).pack(anchor="w", padx=22, pady=(8, 16))
+
         # --- bezpieczeństwo
         sc = w.card(body)
-        sc.grid(row=2, column=0, sticky="ew", pady=(14, 20))
+        sc.grid(row=6, column=0, sticky="ew", pady=(14, 20))
         w.label(sc, "Bezpieczeństwo", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 8))
         key_ok = bool(PUBLIC_KEY_HEX)
         facts = [
@@ -89,6 +150,56 @@ class SettingsPage(Page):
 
         app.on_update_change(self._sync)
         self._sync()
+
+    def apply_theme(self, key: str) -> None:
+        th = THEMES[key]
+        cfgdir = paths.config_dir()
+        cfgdir.mkdir(parents=True, exist_ok=True)
+        f = cfgdir / "theme.json"
+        try:
+            cur = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+        except (OSError, ValueError):
+            cur = {}
+        if cur and "_aderis_theme" not in cur:
+            self.app.toast.show("Masz własny plik theme.json - nie nadpisuję go. Usuń go, jeśli chcesz użyć motywów.", "warn", 6000)
+            return
+        cur = {"_aderis_theme": key, "colors": th["colors"], "animations": self.anim_var.get()}
+        f.write_text(json.dumps(cur, indent=1), encoding="utf-8")
+        self.app.toast.show("Zapisano. Uruchamiam aplikację ponownie…", "ok")
+        self.after(900, self.app.restart_now)
+
+    def toggle_anim(self) -> None:
+        f = paths.config_dir() / "theme.json"
+        try:
+            cur = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+        except (OSError, ValueError):
+            cur = {}
+        if cur and "_aderis_theme" not in cur:
+            self.app.toast.show("Masz własny theme.json - animacje wyłączysz w nim ręcznie.", "warn")
+            return
+        cur.setdefault("_aderis_theme", "aderis")
+        cur["animations"] = bool(self.anim_var.get())
+        cur.setdefault("colors", THEMES[cur["_aderis_theme"]]["colors"] if cur["_aderis_theme"] in THEMES else {})
+        f.write_text(json.dumps(cur, indent=1), encoding="utf-8")
+        anim.set_enabled(self.anim_var.get())
+
+    def purge_all(self) -> None:
+        if not w.confirm(self, "Usuń całkowicie",
+                         "Aplikacja cofnie swoje zmiany i usunie się razem z WSZYSTKIMI danymi (ustawienia, kopie zapasowe, logi).\n\n"
+                         "Tego nie można cofnąć. Kontynuować?", "Usuń wszystko"):
+            return
+        if not w.confirm(self, "Ostatnie potwierdzenie", "Na pewno usunąć Aderis Boost i wszystkie jego pliki?", "Tak, usuń"):
+            return
+        self.purge_out.configure(text="Pracuję…", text_color=c.muted)
+
+        def work():
+            from ... import purge
+            return purge.purge(self.app.settings, lambda m: self.after(0, lambda: self.purge_out.configure(text=m)))
+
+        def done(res):
+            self.purge_out.configure(text="Gotowe. Aplikacja zamknie się i usunie resztę plików.", text_color=c.success)
+            self.after(1500, self.app.quit_app)
+        self.app.bg.run(work, done)
 
     def on_show(self) -> None:
         self._sync()

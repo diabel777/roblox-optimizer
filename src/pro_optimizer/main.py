@@ -64,10 +64,12 @@ def main() -> int:
         logging.getLogger(__name__).info("Start z uprawnieniami admina bez prośby - uruchamiam ponownie jako zwykły użytkownik")
         return 0
     if not acquire_single_instance(wait=8):
-        try:
-            ctypes.windll.user32.MessageBoxW(0, f"{APP_NAME} jest już uruchomiony.", APP_NAME, 0x40)
-        except Exception:
-            pass
+        from . import background
+        if not background.signal_existing():        # działa w tle -> pokaż jej okno zamiast komunikatu
+            try:
+                ctypes.windll.user32.MessageBoxW(0, f"{APP_NAME} jest już uruchomiony.", APP_NAME, 0x40)
+            except Exception:
+                pass
         return 0
     from .ui.app import App
     App().mainloop()

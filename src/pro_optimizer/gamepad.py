@@ -36,6 +36,15 @@ DEFAULTS: dict[str, Any] = {
     "trigger_left": "off", "trigger_right": "off", "trigger_force": 60, "trigger_start": 30,
     "headphone": 70, "speaker": 70, "mic": 70, "mic_led": False,
     "keep": True, "auto_triggers": True,
+    "mode": "static", "speed": 40, "color2": [0, 200, 255],
+}
+
+LIGHT_MODES = {
+    "static": "Jeden kolor",
+    "rainbow": "Tęcza (RGB)",
+    "breathe": "Oddychanie",
+    "pulse2": "Przejście dwóch kolorów",
+    "battery": "Kolor wg baterii",
 }
 
 
@@ -60,6 +69,14 @@ def sanitize(cfg: Optional[dict]) -> dict:
     for k in ("trigger_left", "trigger_right"):
         out[k] = src.get(k) if src.get(k) in TRIGGER_MODES else "off"
     out["mic_led"] = bool(src.get("mic_led", False))
+    out["mode"] = src.get("mode") if src.get("mode") in LIGHT_MODES else "static"
+    out["speed"] = clamp(src.get("speed", 40), 1, 100, 40)
+    c2 = src.get("color2")
+    if isinstance(c2, (list, tuple)) and len(c2) == 3:
+        out["color2"] = [clamp(x, 0, 255, 0) for x in c2]
+    for k, v in src.items():                      # pola robocze (_trig, _rgb) przechodzą dalej
+        if isinstance(k, str) and k.startswith("_"):
+            out[k] = v
     out["keep"] = bool(src.get("keep", True))
     out["auto_triggers"] = bool(src.get("auto_triggers", True))
     return out
@@ -71,7 +88,46 @@ def _scale255(pct: int) -> int:
 
 def _rgb(cfg: dict) -> tuple[int, int, int]:
     k = cfg["brightness"] / 100
-    return tuple(round(x * k) for x in cfg["color"])  # type: ignore[return-value]
+    base = cfg.get("_rgb") or cfg["color"]
+    return tuple(max(0, min(255, round(x * k))) for x in base)  # type: ignore[return-value]
+
+
+# --------------------------------------------------------------------------- animacje światła
+def _hsv(h: float, s: float = 1.0, v: float = 1.0) -> list[int]:
+    import colorsys
+    r, g, b = colorsys.hsv_to_rgb(h % 1.0, s, v)
+    return [round(r * 255), round(g * 255), round(b * 255)]
+
+
+def _mix(a, b, t: float) -> list[int]:
+    return [round(x + (y - x) * t) for x, y in zip(a, b)]
+
+
+def battery_color(pct: int) -> list[int]:
+    """0% czerwony -> 50% żółty -> 100% zielony (płynnie)."""
+    pct = max(0, min(100, int(pct)))
+    return _mix([255, 30, 30], [255, 200, 0], pct / 50) if pct < 50 else _mix([255, 200, 0], [30, 255, 90], (pct - 50) / 50)
+
+
+def frame_color(cfg: dict, t: float, battery_pct: Optional[int] = None) -> list[int]:
+    """Kolor paska w chwili t (sekundy) dla wybranego trybu. Czysta funkcja - używa jej i podgląd w UI, i wątek pada."""
+    import math
+    mode, speed = cfg.get("mode", "static"), clamp(cfg.get("speed", 40), 1, 100, 40)
+    col = cfg.get("color", [120, 70, 255])
+    if mode == "rainbow":
+        return _hsv(t * speed / 100 * 0.5)
+    if mode == "breathe":
+        k = 0.12 + 0.88 * (0.5 + 0.5 * math.sin(t * speed / 100 * 4.0))
+        return [round(x * k) for x in col]
+    if mode == "pulse2":
+        return _mix(col, cfg.get("color2", [0, 200, 255]), 0.5 + 0.5 * math.sin(t * speed / 100 * 4.0))
+    if mode == "battery":
+        base = battery_color(battery_pct if battery_pct is not None else 100)
+        if battery_pct is not None and battery_pct <= 15:           # niski poziom: miganie
+            k = 0.25 + 0.75 * (0.5 + 0.5 * math.sin(t * 5))
+            return [round(x * k) for x in base]
+        return base
+    return list(col)
 
 
 def _crc_bt(payload: bytes) -> bytes:
@@ -294,14 +350,28 @@ class Keeper:
         self._stop.set()
 
     def _run(self) -> None:
-        seq = 0
-        while not self._stop.wait(self.interval):
+        import time
+        seq, pads, pads_at, batt, batt_at, t0 = 0, [], 0.0, None, 0.0, time.time()
+        wait = self.interval
+        while not self._stop.wait(wait):
             try:
                 cfg = sanitize(self._get_cfg())
-                if not cfg["keep"] or not available():
+                animated = cfg["mode"] != "static"
+                wait = (0.22 if animated else self.interval)
+                if not cfg["keep"] and not animated or not available():
+                    wait = self.interval
                     continue
+                now = time.time()
+                if now - pads_at > (4 if animated else 0):
+                    pads, pads_at = detect(), now
+                if cfg["mode"] == "battery" and pads and now - batt_at > 25:
+                    info = battery(pads[0])
+                    batt = info["percent"] if info else batt
+                    batt_at = now
                 eff = effective_config(cfg, self._get_games())
-                for pad in detect():
+                if animated:
+                    eff["_rgb"] = frame_color(cfg, now - t0, batt)
+                for pad in pads:
                     seq = (seq + 1) & 0x0F
                     apply(pad, eff, seq, mode="keep")
             except Exception:

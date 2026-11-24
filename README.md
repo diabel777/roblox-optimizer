@@ -110,6 +110,14 @@ Dwuklik na `ZBUDUJ.bat` (albo `ZBUDUJ.bat "opis zmian"` w cmd). Skrypt sam znajd
 Klucz podpisu jest kopiowany do `%USERPROFILE%\POU-keys` - poza projektem, więc skasowanie folderu projektu go nie usuwa.
 Skrypt nigdy nie generuje nowego klucza sam (nowy klucz = zainstalowane aplikacje odrzucą aktualizacje).
 
+## Nowości w 4.6
+
+- **Test internetu** - ping, jitter, utrata pakietów, pobieranie, wysyłanie i opóźnienie pod obciążeniem, z oceną dla gier/wideo/streamingu.
+- **Praca w tle** - zamknięcie okna chowa aplikację przy zegarze; opcjonalny autostart z Windows. Ponowne otwarcie skrótu pokazuje okno.
+- **Motywy kolorów** i przełącznik animacji w Ustawieniach.
+- **Usuń całkowicie** - cofa zmiany w Windows i w plikach gier, potem kasuje aplikację razem z danymi, skrótami i autostartem.
+- Pady: podgląd koloru na żywo, poziom baterii, animacje świecenia, logo Aderis Boost.
+
 ## Nowości w 4.5
 - Nowa nazwa: Aderis Boost. Pady: poziom baterii i stan ładowania, poprawiony test wibracji (nowszy firmware DualSense), lepsze rozpoznanie Bluetooth. Usunięto instalację DS4Windows i podgląd pliku FastFlag.
 

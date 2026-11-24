@@ -80,6 +80,7 @@ class App(ctk.CTk):
 
         self.after(400, self._style_window)
         self.after(1800, self._startup_tasks)
+        self._setup_background()
 
     # ------------------------------------------------------------------ okno
     def _style_window(self) -> None:
@@ -106,7 +107,7 @@ class App(ctk.CTk):
     # ------------------------------------------------------------------ układ
     def _build_layout(self) -> None:
         from .pages import (antivirus_page, automation_page, backups_page, cleaner_page, dashboard, diagnostics_page,
-                            controllers_page, drivers_page, fan_page, games_page, settings_page, system_page)
+                            controllers_page, drivers_page, fan_page, games_page, settings_page, speedtest_page, system_page)
         self.page_defs = [
             ("dashboard", "Panel główny", dashboard.DashboardPage),
             ("games", "Gry", games_page.GamesPage),
@@ -114,6 +115,7 @@ class App(ctk.CTk):
             ("automation", "Działa samo", automation_page.AutomationPage),
             ("cleaner", "Czyszczenie", cleaner_page.CleanerPage),
             ("system", "Szybszy Windows i internet", system_page.SystemPage),
+            ("speed", "Test internetu", speedtest_page.SpeedPage),
             ("fan", "Wentylatory", fan_page.FanPage),
             ("controllers", "Pady i kierownice", controllers_page.ControllersPage),
             ("antivirus", "Ochrona", antivirus_page.AntivirusPage),
@@ -132,8 +134,17 @@ class App(ctk.CTk):
 
         logo = ctk.CTkFrame(side, fg_color="transparent")
         logo.pack(fill="x", padx=20, pady=(20, 14))
-        ctk.CTkLabel(logo, text="⚡", width=42, height=42, corner_radius=12, fg_color=c.accent,
-                     text_color="#FFFFFF", font=ctk.CTkFont(size=20)).pack(side="left")
+        self._logo_img = None
+        try:
+            from PIL import Image
+            self._logo_img = ctk.CTkImage(Image.open(paths.resource_dir() / "assets" / "logo_mark.png"), size=(46, 46))
+        except Exception:
+            pass
+        if self._logo_img:
+            ctk.CTkLabel(logo, text="", image=self._logo_img, width=46, height=46).pack(side="left")
+        else:
+            ctk.CTkLabel(logo, text="⚡", width=42, height=42, corner_radius=12, fg_color=c.accent,
+                         text_color="#FFFFFF", font=ctk.CTkFont(size=20)).pack(side="left")
         names = ctk.CTkFrame(logo, fg_color="transparent")
         names.pack(side="left", padx=12)
         w.label(names, "Aderis", "heading", c.text, "bold").pack(anchor="w")
@@ -322,12 +333,52 @@ class App(ctk.CTk):
         self.bg.run(work, done)
         self.after(3000, self._hw_tick)
 
-    def on_close(self) -> None:
+    # ------------------------------------------------------------------ praca w tle
+    def _setup_background(self) -> None:
+        from .. import background
+        self.tray = None
+        self._quitting = False
+        if os.name != "nt" or not getattr(sys, "frozen", False):
+            return
+        if self.settings.get("background", True):
+            tray = background.Tray(APP_NAME, paths.resource_dir() / "assets" / "icon.ico",
+                                   lambda: self.after(0, self.show_window), lambda: self.after(0, self.quit_app))
+            if tray.ok:
+                self.tray = tray
+                tray.start()
+                background.listen_for_show(lambda: self.after(0, self.show_window))
+                if "--background" in sys.argv:
+                    self.after(200, self.withdraw)          # start z Windows: od razu do zasobnika
+
+    def show_window(self) -> None:
+        self.deiconify()
+        self.state("normal")
+        self.lift()
+        self.focus_force()
+
+    def quit_app(self) -> None:
+        self._quitting = True
         try:
             self.fan.release()           # zawsze oddaj wentylatory karcie
         except Exception:
             log.exception("release fan")
+        try:
+            if getattr(self, "pad_keeper", None):
+                self.pad_keeper.stop()
+            if self.tray:
+                self.tray.stop()
+        except Exception:
+            pass
         self.destroy()
+
+    def on_close(self) -> None:
+        if self.tray and self.settings.get("background", True):
+            self.withdraw()              # automatyka, pilnowanie pada i doping gier działają dalej
+            if not self.settings.get("tray_hint_shown"):
+                self.settings.set("tray_hint_shown", True)
+                self.tray.notify("Aderis Boost działa w tle. Kliknij ikonę przy zegarze, aby otworzyć okno.", "Aderis Boost")
+            return
+        self.quit_app()
 
     # ------------------------------------------------------------------ automatyzacja
     def _auto_tick(self) -> None:
@@ -436,6 +487,8 @@ class App(ctk.CTk):
     def _set_update(self, state: str, text: str = "", prog: float = 0.0) -> None:
         self.update_state, self.update_text, self.update_progress = state, text, prog
         self._refresh_update_widgets()
+        if state == "ready" and getattr(self, "tray", None) and self.state() == "withdrawn":
+            self.after(1500, lambda: self.restart_now(background=True))     # aplikacja w tle: zaktualizuj się po cichu
         for cb in list(self._update_listeners):
             try:
                 cb()
@@ -509,7 +562,7 @@ class App(ctk.CTk):
 
         self.bg.run(work, done, fail)
 
-    def restart_now(self) -> None:
+    def restart_now(self, background: bool = False) -> None:
         launcher = paths.install_root() / LAUNCHER_EXE
         target = launcher
         if not launcher.exists():
@@ -524,6 +577,6 @@ class App(ctk.CTk):
             # nowa wersja ma wstać jako ZWYKŁY użytkownik, a nie odziedziczyć admina: start przez Eksploratora
             subprocess.Popen([system_exe("explorer"), str(target)], close_fds=True)
         else:
-            subprocess.Popen([str(target)], close_fds=True, creationflags=flags)
-        self.destroy()
+            subprocess.Popen([str(target)] + (["--background"] if background else []), close_fds=True, creationflags=flags)
+        self.quit_app()
         sys.exit(0)

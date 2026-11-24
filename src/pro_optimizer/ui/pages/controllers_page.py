@@ -12,10 +12,36 @@ from ..app import Page
 from ..theme import c
 
 
+def gp_color(pct: int) -> str:
+    r, g, b = gp.battery_color(pct)
+    return "#%02X%02X%02X" % (r, g, b)
+
+
 def _slider(parent, var, lo=0, hi=100, width=240):
     s = ctk.CTkSlider(parent, from_=lo, to=hi, number_of_steps=hi - lo, variable=var, width=width,
                       progress_color=c.accent, button_color=c.accent, button_hover_color=c.accent_hover)
     return s
+
+
+class Orb(tk.Canvas):
+    """Okrągły podgląd koloru paska (z poświatą). Odświeża się na żywo - bez zapisywania i bez pada."""
+
+    def __init__(self, master, size=96):
+        super().__init__(master, width=size, height=size, bg=c.card, highlightthickness=0)
+        self.size = size
+
+    def show(self, rgb) -> None:
+        r, g, b = (max(0, min(255, int(x))) for x in rgb)
+        self.delete("all")
+        mid, s = self.size / 2, self.size
+        bg = c.card
+        for i in range(7, 0, -1):                      # poświata: koncentryczne kręgi mieszane z tłem
+            k = 0.07 * (8 - i) if (r + g + b) else 0
+            col = theme.blend(bg, "#%02X%02X%02X" % (r, g, b), min(1, k))
+            pad = 2 + (7 - i) * 3
+            self.create_oval(pad - 4, pad - 4, s - pad + 4, s - pad + 4, fill=col, outline="")
+        inner = "#%02X%02X%02X" % (r, g, b)
+        self.create_oval(mid - 24, mid - 24, mid + 24, mid + 24, fill=inner, outline=theme.blend(inner, "#FFFFFF", 0.35), width=2)
 
 
 class ControllersPage(Page):
@@ -55,8 +81,15 @@ class ControllersPage(Page):
         w.label(top, "Podłączony pad", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 2))
         self.pad_msg = w.label(top, "Szukam padów…", "body", c.muted, wraplength=720)
         self.pad_msg.pack(fill="x", padx=22)
-        self.batt = w.label(top, "", "heading", c.text, "bold")
-        self.batt.pack(fill="x", padx=22, pady=(4, 0))
+        strip = ctk.CTkFrame(top, fg_color=theme.blend(c.card, "#FFFFFF", 0.05), corner_radius=12)
+        strip.pack(fill="x", padx=22, pady=(8, 2))
+        self.st_conn = w.label(strip, "●  Brak pada", "body", c.muted, "bold")
+        self.st_conn.pack(side="left", padx=14, pady=12)
+        self.batt = w.label(strip, "", "body", c.text, "bold")
+        self.batt.pack(side="right", padx=14)
+        self.batt_bar = w.progress(strip, width=160)
+        self.batt_bar.set(0)
+        self.batt_bar.pack(side="right")
         self.pad_menu = w.option_menu(top, ["-"], width=320, command=lambda _v: self.update_battery())
         self.pad_menu.pack(anchor="w", padx=22, pady=(8, 4))
         r = ctk.CTkFrame(top, fg_color="transparent", height=1)
@@ -78,16 +111,50 @@ class ControllersPage(Page):
                           border_width=2, border_color=c.border,
                           command=lambda v=rgb: self._set_color(v)).grid(row=0, column=i, padx=3, pady=2)
         self.col = [tk.IntVar(value=v) for v in self.cfg["color"]]
+        self.col2 = [tk.IntVar(value=v) for v in self.cfg["color2"]]
+        self.bright = tk.IntVar(value=self.cfg["brightness"])
+        self.speed = tk.IntVar(value=self.cfg["speed"])
+        self.mode = tk.StringVar(value=self.cfg["mode"])
+        mid = ctk.CTkFrame(cc, fg_color="transparent")
+        mid.pack(fill="x", padx=22, pady=(6, 0))
+        left = ctk.CTkFrame(mid, fg_color="transparent")
+        left.pack(side="left", fill="x", expand=True)
         for lbl, var in zip(("R", "G", "B"), self.col):
-            rr = ctk.CTkFrame(cc, fg_color="transparent", height=1)
-            rr.pack(fill="x", padx=22, pady=2)
+            rr = ctk.CTkFrame(left, fg_color="transparent", height=1)
+            rr.pack(fill="x", pady=2)
             w.label(rr, lbl, "body", c.text, "bold", width=24).pack(side="left")
             _slider(rr, var, 0, 255, 320).pack(side="left", padx=8)
-        self.bright = tk.IntVar(value=self.cfg["brightness"])
-        rr = ctk.CTkFrame(cc, fg_color="transparent", height=1)
-        rr.pack(fill="x", padx=22, pady=(2, 16))
+        rr = ctk.CTkFrame(left, fg_color="transparent", height=1)
+        rr.pack(fill="x", pady=2)
         w.label(rr, "Jasność", "body", c.text, "bold", width=60).pack(side="left")
         _slider(rr, self.bright, 0, 100, 290).pack(side="left", padx=8)
+        self.orb = Orb(mid, 120)
+        self.orb.pack(side="right", padx=(10, 6))
+        w.label(cc, "Podgląd na żywo - widzisz kolor zanim cokolwiek zapiszesz.", "small", c.muted).pack(fill="x", padx=22)
+
+        w.label(cc, "Animacja paska", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(14, 4))
+        self.modes = {v: k for k, v in gp.LIGHT_MODES.items()}
+        mr = ctk.CTkFrame(cc, fg_color="transparent", height=1)
+        mr.pack(fill="x", padx=22)
+        mm = w.option_menu(mr, list(self.modes), command=lambda v: (self.mode.set(self.modes[v]), self._preview_reset()), width=280)
+        mm.set(gp.LIGHT_MODES[self.mode.get()])
+        mm.pack(side="left")
+        sr = ctk.CTkFrame(cc, fg_color="transparent", height=1)
+        sr.pack(fill="x", padx=22, pady=(6, 0))
+        w.label(sr, "Szybkość", "body", c.text, "bold", width=80).pack(side="left")
+        _slider(sr, self.speed, 1, 100, 280).pack(side="left", padx=8)
+        for lbl, var in zip(("Kolor 2: R", "G", "B"), self.col2):
+            r2 = ctk.CTkFrame(cc, fg_color="transparent", height=1)
+            r2.pack(fill="x", padx=22, pady=1)
+            w.label(r2, lbl, "small", c.muted, width=80).pack(side="left")
+            _slider(r2, var, 0, 255, 220).pack(side="left", padx=8)
+        w.label(cc, "„Przejście dwóch kolorów” używa koloru 1 i 2. „Kolor wg baterii”: czerwony → żółty → zielony, a przy niskim poziomie pad miga.",
+                "small", c.muted, wraplength=700).pack(fill="x", padx=22, pady=(2, 16))
+        for v in (*self.col, *self.col2, self.bright, self.speed):
+            v.trace_add("write", lambda *_: self._preview_reset())
+        self._t0 = __import__("time").time()
+        self._batt_pct = None
+        self.after(100, self._preview_tick)
 
         # --- wibracje i spusty
         vc = w.card(body)
@@ -157,6 +224,22 @@ class ControllersPage(Page):
         w.label(bar, "Przemapowania przycisków tu nie ma celowo - wymaga sterownika wirtualnego, który psuje się z anty-cheatami.",
                 "small", c.muted, wraplength=420).pack(side="left", padx=10)
 
+    def _preview_reset(self) -> None:
+        self._t0 = __import__("time").time()
+
+    def _preview_tick(self) -> None:
+        """Podgląd koloru na żywo (także animacji) - działa tylko, gdy strona jest widoczna."""
+        try:
+            if self.app.current_page_id() == "controllers":
+                cfg = {"mode": self.mode.get(), "speed": self.speed.get(), "color": [v.get() for v in self.col],
+                       "color2": [v.get() for v in self.col2]}
+                rgb = gp.frame_color(cfg, __import__("time").time() - self._t0, self._batt_pct)
+                k = self.bright.get() / 100
+                self.orb.show([x * k for x in rgb])
+        except Exception:
+            pass
+        self.after(60, self._preview_tick)
+
     def _set_color(self, rgb) -> None:
         for v, x in zip(self.col, rgb):
             v.set(int(x))
@@ -169,6 +252,7 @@ class ControllersPage(Page):
             "trigger_force": self.tf.get(), "trigger_start": self.ts.get(),
             "headphone": self.hp.get(), "speaker": self.sp.get(), "mic": self.mc.get(), "mic_led": self.led.get(),
             "keep": self.keep.get(), "auto_triggers": self.auto_trig.get(),
+            "mode": self.mode.get(), "speed": self.speed.get(), "color2": [v.get() for v in self.col2],
         }
         return gp.sanitize(cfg)
 
@@ -182,11 +266,15 @@ class ControllersPage(Page):
             self.pad_menu.configure(values=["-"])
             self.pad_menu.set("-")
             self.batt.configure(text="")
+            self.batt_bar.set(0)
+            self.st_conn.configure(text="●  Brak pada", text_color=c.muted)
             return
         names = [f"{p.name} ({'Bluetooth' if p.bluetooth else 'USB'})" for p in self.pads]
         self.pad_menu.configure(values=names)
         self.pad_menu.set(names[0])
         self.pad_msg.configure(text=f"Znaleziono: {len(self.pads)}")
+        p0 = self.pads[0]
+        self.st_conn.configure(text=f"●  {p0.name}  •  {'Bluetooth' if p0.bluetooth else 'USB'}", text_color=c.success)
         self.update_battery()
 
     def update_battery(self) -> None:
@@ -204,7 +292,10 @@ class ControllersPage(Page):
                 return
             state = {"charging": "ładowanie", "full": "naładowany", "discharging": "rozładowuje się"}[b["state"]]
             col = c.danger if b["percent"] <= 15 and b["state"] == "discharging" else (c.success if b["state"] != "discharging" else c.text)
-            self.batt.configure(text=f"Bateria: {b['percent']}%  ({state})", text_color=col)
+            self.batt.configure(text=f"{b['percent']}%  ({state})", text_color=col)
+            self._batt_pct = b["percent"]
+            self.batt_bar.configure(progress_color=col if col != c.text else gp_color(b["percent"]))
+            self.batt_bar.set(b["percent"] / 100)
         self.app.bg.run(work, done)
 
     def _poll_battery(self) -> None:

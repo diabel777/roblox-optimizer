@@ -9,7 +9,7 @@ a = Analysis(
     pathex=[os.path.join(ROOT, "src")],
     datas=[(os.path.join(ROOT, "config"), "config"),
            (os.path.join(ROOT, "assets"), "assets")] + collect_data_files("customtkinter"),
-    hiddenimports=["hid"],
+    hiddenimports=["hid", "pystray", "pystray._win32"],
     excludes=["unittest", "pydoc", "test", "matplotlib", "numpy"],
     noarchive=False,
 )

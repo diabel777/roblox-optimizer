@@ -128,3 +128,14 @@ def test_bluetooth_detection():
     assert g.is_bluetooth({"bus_type": 2}) and not g.is_bluetooth({"bus_type": 1})
     assert g.is_bluetooth({"path": b"\\\\?\\HID#{00001124-0000-1000-8000-00805f9b34fb}_VID&0002054c"})
     assert not g.is_bluetooth({"path": b"\\\\?\\HID#VID_054C&PID_0CE6#7&abc"})
+
+
+def test_speedtest_math_and_grading():
+    from pro_optimizer import speedtest as st
+    assert st.mbps(12_500_000, 1.0) == 100.0 and st.mbps(1, 0) == 0.0
+    assert st.jitter([10, 12, 10, 14]) == (2 + 2 + 4) / 3
+    good = st.grade({"ping": 12, "jitter": 2, "loss": 0, "down": 300, "up": 50, "loaded_ping": 25})
+    assert good["Gry online"] == "Świetnie" and good["Streaming 4K"] == "Świetnie" and good["Opóźnienie pod obciążeniem"] == "Brak problemu"
+    bad = st.grade({"ping": 150, "jitter": 40, "loss": 5, "down": 5, "up": 1, "loaded_ping": 400})
+    assert bad["Gry online"] == "Słabo" and "QoS" in bad["Opóźnienie pod obciążeniem"]
+    assert st.HOST == "speed.cloudflare.com" and st.DOWN.startswith("https://")
