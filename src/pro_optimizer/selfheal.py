@@ -49,6 +49,7 @@ def ensure(root: Optional[Path] = None, last_shortcut_version: str = "") -> dict
     icon = root / "app.ico"
     icon = icon if icon.exists() else None
     existing = shell.shortcut_paths()
+    log.info("Samonaprawa: launcher=%s cel=%s %s", lp.exists(), target, "; ".join(shell.describe_shortcuts()))
     need = (not lp.exists()) or last_shortcut_version != VERSION or any(not p.exists() for p in existing.values())
     if need:
         made = shell.create_shortcuts(target, icon, True, True)

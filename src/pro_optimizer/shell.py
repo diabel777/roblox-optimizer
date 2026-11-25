@@ -62,12 +62,24 @@ def create_shortcut(lnk: Path, target: Path, icon: Optional[Path] = None, descri
         lnk.parent.mkdir(parents=True, exist_ok=True)
         env = dict(os.environ, POU_LNK=str(lnk), POU_TARGET=str(target), POU_WD=str(target.parent),
                    POU_ICON=f"{icon or target},0", POU_DESC=description)
-        subprocess.run([system_exe("powershell"), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-                        "-Command", _PS_LINK], env=env, creationflags=NO_WINDOW, timeout=40,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        r = subprocess.run([system_exe("powershell"), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                            "-Command", _PS_LINK], env=env, creationflags=NO_WINDOW, timeout=40,
+                           capture_output=True, text=True, errors="replace")
+        if r.returncode != 0 or not lnk.exists():
+            log.warning("Skrót %s: powershell kod %s, %s", lnk, r.returncode, (r.stderr or r.stdout or "").strip()[:300])
     except Exception as e:
         log.warning("Nie udało się utworzyć skrótu %s: %s", lnk, e)
-    return lnk.exists()
+    ok = lnk.exists()
+    log.info("Skrót %s -> %s : %s", lnk, target, "utworzony" if ok else "BRAK")
+    return ok
+
+
+def describe_shortcuts() -> list[str]:
+    """Do logu: gdzie są skróty i czy ich cele istnieją (diagnostyka znikających skrótów)."""
+    out = []
+    for key, p in shortcut_paths().items():
+        out.append(f"{key}: {p} istnieje={p.exists()}")
+    return out
 
 
 LEGACY_SHORTCUT_NAMES = ("PRO Ultimate Optimizer.lnk",)     # skróty sprzed zmiany nazwy na Aderis Boost
