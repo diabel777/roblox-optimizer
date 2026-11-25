@@ -297,6 +297,7 @@ class App(ctk.CTk):
                 self.settings.set("shortcuts_version", VERSION)
                 return r
             self.bg.run(heal)
+            self.after(10 * 60 * 1000, self._periodic_heal)
         self.reapply_roblox(silent_if_none=True)
         self.after(5 * 60 * 1000, self._periodic_roblox)
         self.check_updates(manual=False)                    # aktualizacje zawsze działają same
@@ -306,6 +307,14 @@ class App(ctk.CTk):
             self._start_pad_keeper()
         self.after(3000, self._hw_tick)
         self.after(20000, self._auto_tick)
+
+    def _periodic_heal(self) -> None:
+        """Aplikacja może działać w tle całymi dniami - co 10 min pilnujemy, żeby skróty i launcher nie zniknęły."""
+        def heal():
+            from .. import selfheal
+            return selfheal.ensure(last_shortcut_version=VERSION)
+        self.bg.run(heal)
+        self.after(10 * 60 * 1000, self._periodic_heal)
 
     def _start_pad_keeper(self) -> None:
         from .. import gamepad

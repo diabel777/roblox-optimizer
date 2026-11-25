@@ -106,6 +106,8 @@ def run_task(name: str, settings, catalog: list[dict], games: list[dict], runnin
         return defender.update_signatures()
     if name == "scan":
         ok, msg = defender.scan("quick")
+        if not ok and "already in progress" in (msg or "").lower():
+            return True, "skanowanie już trwa - pominięto"
         return ok, msg
     if name == "app_opt":
         from . import appopt

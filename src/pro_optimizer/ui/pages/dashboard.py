@@ -225,7 +225,7 @@ class DashboardPage(Page):
             running = cleaner.running_processes()
             out = []
             for i, t in enumerate(tasks):
-                self.app.bg.call(self.hero_steps.configure, text=f"{automation.TASK_LABELS[t]}…")
+                self.app.bg.call(lambda txt=f"{automation.TASK_LABELS[t]}…": self.hero_steps.configure(text=txt))
                 ok, msg = automation.run_task(t, self.app.settings, self.app.catalog, self.app.games, running)
                 out.append((t, ok, msg))
             return out
