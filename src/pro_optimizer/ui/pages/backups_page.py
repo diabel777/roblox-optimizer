@@ -103,6 +103,8 @@ class BackupsPage(Page):
             snapshot.prune(20)
             self.app.toast.show(f"Kopia gotowa ({len(s.files)} plików).", "ok")
             self.reload_snapshots()
+            from ... import cloud
+            self.app.cloud_sync(lambda: cloud.sync_snapshot(s), "Kopia wysłana także do chmury.")
 
         def fail(e):
             self.mk_btn.configure(state="normal", text="Utwórz kopię zaznaczonych")

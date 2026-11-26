@@ -25,11 +25,82 @@ PUBLISHER = "Diabeł"
 _CSIDL_PROGRAMS = 0x0002                     # Menu Start\Programy (użytkownika)
 _CSIDL_DESKTOP = 0x0010                      # Pulpit (z uwzględnieniem OneDrive)
 
-# Skrypt tworzący skrót. Wszystkie dane idą przez zmienne środowiskowe, a NIE przez sklejanie
-# tekstu - dzięki temu dziwna nazwa użytkownika (apostrof, $, `) nie może wstrzyknąć kodu.
+# Skrypt tworzący skrót przez IShellLinkW (Unicode). Stary sposób (WScript.Shell) zamienia litery spoza systemowej strony
+# kodowej ANSI - np. „ł” w nazwie użytkownika „Diabeł” - i skrót wskazuje wtedy w nieistniejące miejsce.
+# Wszystkie dane idą przez zmienne środowiskowe (Unicode), a NIE przez sklejanie tekstu - nic nie może wstrzyknąć kodu.
+_PS_LINK_W = r"""
+$code = @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class AderisLnk {
+  [ComImport, Guid("00021401-0000-0000-C000-000000000046")] class CShellLink {}
+  [ComImport, Guid("000214F9-0000-0000-C000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IShellLinkW {
+    void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszFile, int cch, IntPtr pfd, uint fFlags);
+    void GetIDList(out IntPtr ppidl);
+    void SetIDList(IntPtr pidl);
+    void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszName, int cch);
+    void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string pszName);
+    void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszDir, int cch);
+    void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string pszDir);
+    void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszArgs, int cch);
+    void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string pszArgs);
+    void GetHotkey(out short pwHotkey);
+    void SetHotkey(short wHotkey);
+    void GetShowCmd(out int piShowCmd);
+    void SetShowCmd(int iShowCmd);
+    void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszIconPath, int cch, out int piIcon);
+    void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string pszIconPath, int iIcon);
+    void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string pszPathRel, uint dwReserved);
+    void Resolve(IntPtr hwnd, uint fFlags);
+    void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
+  }
+  [ComImport, Guid("0000010b-0000-0000-C000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IPersistFile {
+    void GetClassID(out Guid pClassID);
+    [PreserveSig] int IsDirty();
+    void Load([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, uint dwMode);
+    void Save([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, [MarshalAs(UnmanagedType.Bool)] bool fRemember);
+    void SaveCompleted([MarshalAs(UnmanagedType.LPWStr)] string pszFileName);
+    void GetCurFile([MarshalAs(UnmanagedType.LPWStr)] out string ppszFileName);
+  }
+  public static string Create(string lnk, string target, string wd, string icon, string desc) {
+    var l = (IShellLinkW)new CShellLink();
+    l.SetPath(target); l.SetWorkingDirectory(wd); l.SetIconLocation(icon, 0); l.SetDescription(desc);
+    ((IPersistFile)l).Save(lnk, true);
+    var r = (IShellLinkW)new CShellLink();
+    ((IPersistFile)r).Load(lnk, 0);
+    var sb = new StringBuilder(1024);
+    r.GetPath(sb, 1024, IntPtr.Zero, 0);
+    return sb.ToString();
+  }
+}
+'@
+Add-Type -TypeDefinition $code -ErrorAction Stop
+$o = [AderisLnk]::Create($env:POU_LNK, $env:POU_TARGET, $env:POU_WD, $env:POU_ICON_PATH, $env:POU_DESC)
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Write-Output ("TARGET=" + $o)
+"""
+
+# Zapasowy sposób (stary): działa tylko dla nazw z liter ze strony kodowej ANSI, dlatego używamy go po krótkiej ścieżce 8.3.
 _PS_LINK = ("$s=(New-Object -ComObject WScript.Shell).CreateShortcut($env:POU_LNK);"
             "$s.TargetPath=$env:POU_TARGET;$s.WorkingDirectory=$env:POU_WD;"
             "$s.IconLocation=$env:POU_ICON;$s.Description=$env:POU_DESC;$s.Save()")
+
+
+def _short(p: Path) -> str:
+    """Krótka (8.3, same znaki ASCII) wersja ścieżki, jeśli system ją ma; inaczej zwykła."""
+    if not NT:
+        return str(p)
+    try:
+        import ctypes
+        buf = ctypes.create_unicode_buffer(1024)
+        if ctypes.windll.kernel32.GetShortPathNameW(str(p), buf, 1024) and buf.value:
+            return buf.value
+    except Exception:
+        pass
+    return str(p)
 
 
 def _special_folder(csidl: int) -> Optional[Path]:
@@ -55,18 +126,42 @@ def shortcut_paths() -> dict[str, Path]:
     return out
 
 
+def _run_ps(script: str, env: dict) -> tuple[int, str]:
+    r = subprocess.run([system_exe("powershell"), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
+                       env=env, creationflags=NO_WINDOW, timeout=60, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return r.returncode, ((r.stdout or "") + (r.stderr or "")).strip()
+
+
+def _same_file(a: str, b: Path) -> bool:
+    try:
+        return os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(str(b))) and Path(a).exists()
+    except OSError:
+        return False
+
+
 def create_shortcut(lnk: Path, target: Path, icon: Optional[Path] = None, description: str = APP_NAME) -> bool:
+    """Tworzy skrót i SPRAWDZA, że wskazuje istniejący plik. Najpierw Unicode (IShellLinkW), potem zapasowo po ścieżce 8.3."""
     if not NT:
         return False
     try:
         lnk.parent.mkdir(parents=True, exist_ok=True)
-        env = dict(os.environ, POU_LNK=str(lnk), POU_TARGET=str(target), POU_WD=str(target.parent),
-                   POU_ICON=f"{icon or target},0", POU_DESC=description)
-        r = subprocess.run([system_exe("powershell"), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-                            "-Command", _PS_LINK], env=env, creationflags=NO_WINDOW, timeout=40,
-                           capture_output=True, text=True, errors="replace")
-        if r.returncode != 0 or not lnk.exists():
-            log.warning("Skrót %s: powershell kod %s, %s", lnk, r.returncode, (r.stderr or r.stdout or "").strip()[:300])
+        ico = icon or target
+        base = dict(os.environ, POU_LNK=str(lnk), POU_TARGET=str(target), POU_WD=str(target.parent),
+                    POU_ICON_PATH=str(ico), POU_ICON=f"{ico},0", POU_DESC=description)
+        good = False
+        try:
+            code, out = _run_ps(_PS_LINK_W, base)
+            line = next((ln for ln in out.splitlines() if ln.startswith("TARGET=")), "")
+            read_back = line[len("TARGET="):].strip()
+            good = code == 0 and lnk.exists() and _same_file(read_back, target)
+            log.info("Skrót (Unicode) %s: kod %s, odczytany cel=%r, zgodny=%s%s", lnk.name, code, read_back, good,
+                     "" if good else f" ({out[:200]})")
+        except Exception as e:
+            log.warning("Skrót (Unicode) %s nie powiódł się: %s", lnk, e)
+        if not good:
+            alt = dict(base, POU_TARGET=_short(target), POU_WD=_short(target.parent), POU_ICON=f"{_short(ico)},0")
+            code, out = _run_ps(_PS_LINK, alt)
+            log.info("Skrót (zapasowy, 8.3) %s: kod %s %s", lnk.name, code, out[:200])
     except Exception as e:
         log.warning("Nie udało się utworzyć skrótu %s: %s", lnk, e)
     ok = lnk.exists()

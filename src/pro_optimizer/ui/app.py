@@ -134,8 +134,8 @@ class App(ctk.CTk):
 
     # ------------------------------------------------------------------ układ
     def _build_layout(self) -> None:
-        from .pages import (antivirus_page, automation_page, backups_page, cleaner_page, dashboard, diagnostics_page,
-                            controllers_page, downloads_page, drivers_page, fan_page, games_page, settings_page, speedtest_page, system_page)
+        from .pages import (antivirus_page, assistant_page, automation_page, backups_page, cleaner_page, dashboard, diagnostics_page,
+                            assistant_page, controllers_page, downloads_page, drivers_page, fan_page, games_page, settings_page, speedtest_page, system_page)
         self.page_defs = [
             ("dashboard", "Panel główny", dashboard.DashboardPage),
             ("games", "Gry", games_page.GamesPage),
@@ -143,6 +143,7 @@ class App(ctk.CTk):
             ("automation", "Działa samo", automation_page.AutomationPage),
             ("cleaner", "Czyszczenie", cleaner_page.CleanerPage),
             ("system", "Szybszy Windows i internet", system_page.SystemPage),
+            ("assistant", "Asystent AI", assistant_page.AssistantPage),
             ("speed", "Test internetu", speedtest_page.SpeedPage),
             ("fan", "Wentylatory", fan_page.FanPage),
             ("controllers", "Pady i kierownice", controllers_page.ControllersPage),
@@ -307,6 +308,14 @@ class App(ctk.CTk):
             self._start_pad_keeper()
         self.after(3000, self._hw_tick)
         self.after(20000, self._auto_tick)
+
+    def cloud_sync(self, fn, ok_msg: Optional[str]) -> None:
+        """Cicha synchronizacja z chmurą (tylko gdy zalogowano i włączono). Błąd nie przeszkadza w pracy - trafia do logu."""
+        from .. import cloud
+        if not cloud.is_linked() or not self.settings.get("cloud_sync", True):
+            return
+        self.bg.run(fn, (lambda _r: self.toast.show(ok_msg, "ok")) if ok_msg else None,
+                    lambda e: log.info("Synchronizacja z chmurą nie powiodła się: %s", e))
 
     def _periodic_heal(self) -> None:
         """Aplikacja może działać w tle całymi dniami - co 10 min pilnujemy, żeby skróty i launcher nie zniknęły."""

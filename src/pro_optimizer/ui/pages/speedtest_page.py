@@ -147,6 +147,10 @@ class SpeedPage(Page):
         self._render_history()
 
     # --------------------------------------------------------------- test
+    def start(self) -> None:
+        if not self.running:
+            self.toggle()
+
     def toggle(self) -> None:
         if self.running:
             self.stop.set()
@@ -206,6 +210,8 @@ class SpeedPage(Page):
             hist.append({k: res.get(k) for k in ("time", "down", "up", "ping", "jitter", "loss", "loaded_ping")})
             self.app.settings.set("speed_history", hist[-12:])
             self._render_history()
+            from ... import cloud
+            self.app.cloud_sync(lambda: cloud.sync_speedtest(res), None)
 
     def _context(self) -> dict:
         out = {}

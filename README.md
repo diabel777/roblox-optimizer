@@ -110,6 +110,12 @@ Dwuklik na `ZBUDUJ.bat` (albo `ZBUDUJ.bat "opis zmian"` w cmd). Skrypt sam znajd
 Klucz podpisu jest kopiowany do `%USERPROFILE%\POU-keys` - poza projektem, więc skasowanie folderu projektu go nie usuwa.
 Skrypt nigdy nie generuje nowego klucza sam (nowy klucz = zainstalowane aplikacje odrzucą aktualizacje).
 
+## Nowości w 4.8
+
+- **Konto Aderis**: logowanie kodem ze strony (Ustawienia → Konto), chmura na 3 kopie zapasowe i 6 ostatnich testów internetu - widoczne też na stronie po zalogowaniu.
+- **Asystent AI**: rozmowa po polsku, który zna aplikację, dopytuje o kartę i grę i proponuje przyciski. Każdą akcję zatwierdzasz sam; poza białą listą nic nie zrobi.
+- **Skróty**: tworzone Unicode-owo (dotąd litera „ł” w nazwie użytkownika mogła psuć cel skrótu) z weryfikacją, przycisk „Napraw skróty i ikonę" w Ustawieniach.
+
 ## Nowości w 4.7.2
 
 - Naprawiony przycisk **„Zwiększ FPS"** na panelu głównym (kończył się błędem po pierwszym kroku).

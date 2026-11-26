@@ -1,6 +1,6 @@
 """Wersja aplikacji. Podbijaj ją przed każdym wydaniem (tools/release.py bierze ją stąd)."""
 
-VERSION = "4.7.2"
+VERSION = "4.8.0"
 APP_NAME = "Aderis Boost"
 APP_ID = "ProUltimateOptimizer"
 APP_EXE = "ProUltimateOptimizerApp.exe"   # exe aplikacji wewnątrz folderu app-X.Y.Z

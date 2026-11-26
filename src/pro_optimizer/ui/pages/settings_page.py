@@ -82,6 +82,11 @@ class SettingsPage(Page):
         w.button(prow, "Zapisz mój profil do pliku", self.export_profile, "primary", width=220).pack(side="left")
         w.button(prow, "Wczytaj profil z pliku", self.import_profile, "ghost", width=190).pack(side="left", padx=8)
 
+        # --- konto w chmurze
+        self.acc = w.card(body)
+        self.acc.grid(row=2, column=0, sticky="ew", pady=(14, 0))
+        self._draw_account()
+
         # --- praca w tle
         bc = w.card(body)
         bc.grid(row=3, column=0, sticky="ew", pady=(14, 0))
@@ -95,7 +100,12 @@ class SettingsPage(Page):
         w.switch(bc, "Działaj w tle po zamknięciu okna", variable=self.bg_var,
                  command=lambda: app.settings.set("background", self.bg_var.get())).pack(anchor="w", padx=22, pady=(10, 2))
         w.switch(bc, "Uruchamiaj razem z Windows (od razu w tle)", variable=self.auto_var,
-                 command=lambda: (background.set_autostart(self.auto_var.get()) or None)).pack(anchor="w", padx=22, pady=(2, 16))
+                 command=lambda: (background.set_autostart(self.auto_var.get()) or None)).pack(anchor="w", padx=22, pady=(2, 8))
+        fr = ctk.CTkFrame(bc, fg_color="transparent")
+        fr.pack(fill="x", padx=22, pady=(0, 16))
+        w.button(fr, "Napraw skróty i ikonę", self.repair_shortcuts, "ghost", height=34, width=200).pack(side="left")
+        self.repair_msg = w.label(fr, "Skrót na pulpicie lub w Menu Start nie działa albo go nie ma? Kliknij.", "small", c.muted, wraplength=480)
+        self.repair_msg.pack(side="left", padx=12)
 
         # --- wygląd
         ac = w.card(body)
@@ -150,6 +160,133 @@ class SettingsPage(Page):
 
         app.on_update_change(self._sync)
         self._sync()
+
+    # ---------------------------------------------------------------- konto w chmurze
+    def _draw_account(self) -> None:
+        from ... import cloud
+        for ch in self.acc.winfo_children():
+            ch.destroy()
+        w.label(self.acc, "Konto Aderis (chmura i asystent AI)", "heading", c.text, "bold").pack(fill="x", padx=22, pady=(18, 4))
+        acc = cloud.load_account()
+        if acc:
+            w.label(self.acc, f"Zalogowano jako {acc['nick']}  ({acc['email']})", "body", c.success).pack(fill="x", padx=22)
+            w.label(self.acc, "Twoje dane (ostatnie 6 testów internetu i 3 kopie zapasowe) są w chmurze i widoczne po zalogowaniu na stronie. "
+                              "Asystent AI jest włączony.", "small", c.muted, wraplength=700).pack(fill="x", padx=22, pady=(2, 6))
+            self.sync_var = tk.BooleanVar(value=bool(self.app.settings.get("cloud_sync", True)))
+            w.switch(self.acc, "Wysyłaj automatycznie testy internetu i kopie zapasowe do chmury", variable=self.sync_var,
+                     command=lambda: self.app.settings.set("cloud_sync", self.sync_var.get())).pack(anchor="w", padx=22, pady=4)
+            row = ctk.CTkFrame(self.acc, fg_color="transparent")
+            row.pack(fill="x", padx=22, pady=(8, 4))
+            w.button(row, "Wyślij najnowszą kopię teraz", self.cloud_push_backup, "primary", height=36, width=230).pack(side="left")
+            w.button(row, "Pobierz kopię z chmury", self.cloud_pull_backup, "ghost", height=36, width=190).pack(side="left", padx=8)
+            w.button(row, "Wyloguj", self.cloud_logout, "ghost", height=36, width=100).pack(side="left")
+            self.acc_msg = w.label(self.acc, "", "small", c.muted, wraplength=700)
+            self.acc_msg.pack(fill="x", padx=22, pady=(4, 16))
+        else:
+            w.label(self.acc, "Zaloguj się, żeby zapisywać dane w chmurze (3 kopie zapasowe, 6 testów internetu) i korzystać z asystenta AI. "
+                              "Wszystko za darmo.", "small", c.muted, wraplength=700).pack(fill="x", padx=22)
+            w.label(self.acc, "1. Kliknij „Otwórz stronę” i zaloguj się na swoje konto.   2. Na stronie kliknij „Połącz aplikację” i skopiuj kod.   "
+                              "3. Wklej kod poniżej.", "small", c.text, wraplength=700).pack(fill="x", padx=22, pady=(8, 6))
+            row = ctk.CTkFrame(self.acc, fg_color="transparent")
+            row.pack(fill="x", padx=22, pady=(4, 4))
+            w.button(row, "Otwórz stronę", self.cloud_open_site, "ghost", height=36, width=150).pack(side="left")
+            self.code_entry = w.entry(row, placeholder_text="Kod np. ABCDE-23456", width=210)
+            self.code_entry.pack(side="left", padx=8)
+            self.code_entry.bind("<Return>", lambda _e: self.cloud_login())
+            self.login_btn = w.button(row, "Zaloguj", self.cloud_login, "primary", height=36, width=110)
+            self.login_btn.pack(side="left")
+            self.acc_msg = w.label(self.acc, "", "small", c.muted, wraplength=700)
+            self.acc_msg.pack(fill="x", padx=22, pady=(4, 16))
+
+    def _acc_say(self, text: str, kind: str = "muted") -> None:
+        col = {"ok": c.success, "err": c.danger, "warn": c.warning}.get(kind, c.muted)
+        try:
+            self.acc_msg.configure(text=text, text_color=col)
+        except Exception:
+            pass
+
+    def cloud_open_site(self) -> None:
+        import webbrowser
+        from ... import cloud
+        webbrowser.open(cloud.CLOUD_BASE + "/konto.html")
+
+    def cloud_login(self) -> None:
+        from ... import cloud
+        code = self.code_entry.get()
+        self.login_btn.configure(state="disabled")
+        self._acc_say("Łączę…")
+
+        def done(res):
+            self.app.toast.show(f"Zalogowano jako {res['nick']}.", "ok")
+            self._draw_account()
+
+        def fail(e):
+            self.login_btn.configure(state="normal")
+            self._acc_say(str(e) if isinstance(e, cloud.CloudError) else "Nie udało się zalogować.", "err")
+        self.app.bg.run(lambda: cloud.link(code, cloud.device_name()), done, fail)
+
+    def cloud_logout(self) -> None:
+        from ... import cloud
+        if w.confirm(self, "Wyloguj", "Wylogować to urządzenie? Dane w chmurze zostają na koncie.", "Wyloguj"):
+            cloud.logout()
+            self._draw_account()
+
+    def cloud_push_backup(self) -> None:
+        from ... import cloud, snapshot
+        snaps = snapshot.list_snapshots()
+        if not snaps:
+            self._acc_say("Nie masz jeszcze kopii. Utwórz ją na stronie „Kopie zapasowe”.", "warn")
+            return
+        self._acc_say("Wysyłam…")
+        self.app.bg.run(lambda: cloud.sync_snapshot(snaps[0]), lambda _r: self._acc_say("Kopia wysłana do chmury.", "ok"),
+                        lambda e: self._acc_say(str(e), "err"))
+
+    def cloud_pull_backup(self) -> None:
+        from ... import cloud, snapshot
+        self._acc_say("Pobieram listę…")
+
+        def pick(items):
+            items = [i for i in items if i.get("kind") == "backup"]
+            if not items:
+                self._acc_say("W chmurze nie ma jeszcze kopii.", "warn")
+                return
+            it = items[0]            # najnowsza
+            if not w.confirm(self, "Pobierz kopię", f"Pobrać najnowszą kopię z chmury ({it.get('name')})? Pojawi się na liście na stronie „Kopie zapasowe” - nic nie zostanie przywrócone automatycznie.", "Pobierz"):
+                self._acc_say("")
+                return
+
+            def work():
+                import time as _t
+                data = cloud.get_item(int(it["id"]))["data"]
+                dest = snapshot.snapshots_dir() / _t.strftime("%Y%m%d-%H%M%S-chmura")
+                cloud.unpack_to(data, dest)
+                s = snapshot.load(dest)
+                if not s or snapshot.verify(s):
+                    import shutil
+                    shutil.rmtree(dest, ignore_errors=True)
+                    raise cloud.CloudError("Kopia z chmury jest uszkodzona - nie zapisano jej.")
+                return s
+            self.app.bg.run(work, lambda _s: self._acc_say("Pobrano. Znajdziesz ją w „Kopie zapasowe”.", "ok"),
+                            lambda e: self._acc_say(str(e), "err"))
+        self.app.bg.run(lambda: cloud.list_items("backup"), pick, lambda e: self._acc_say(str(e), "err"))
+
+    def repair_shortcuts(self) -> None:
+        self.repair_msg.configure(text="Naprawiam…", text_color=c.muted)
+
+        def work():
+            from ... import selfheal, shell
+            root = paths.install_root()
+            lp = selfheal.launcher_path(root)
+            ico = root / "app.ico"
+            shell.create_shortcuts(lp, ico if ico.exists() else None, True, True)
+            return shell.describe_shortcuts()
+
+        def done(lines):
+            ok = all("istnieje=True" in ln for ln in lines) and bool(lines)
+            self.repair_msg.configure(text=("Gotowe - skrót na pulpicie i w Menu Start jest na miejscu." if ok else
+                                            "Nie udało się utworzyć wszystkich skrótów. Wyślij mi plik app.log z folderu logs."),
+                                      text_color=c.success if ok else c.warning)
+        self.app.bg.run(work, done, lambda e: self.repair_msg.configure(text=f"Nie udało się: {e}", text_color=c.danger))
 
     def _write_theme(self, **changes) -> None:
         """Dopisuje nasze zmiany do theme.json, zachowując resztę Twoich ustawień (czcionki, rozmiary okna)."""
